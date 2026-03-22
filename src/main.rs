@@ -77,7 +77,44 @@ impl Cpu {
     }
 
     pub fn decode(&self, raw_inst: RawInstruction) -> Instruction {
-        todo!()
+        let raw_bits = raw_inst.bits;
+
+        let opcode_bits: u8 = (raw_bits & 0x7F) as u8;
+        let rd: u8 = ((raw_bits >> 7) & 0x1F) as u8;
+        let rs1: u8 = ((raw_bits >> 15) & 0x1F) as u8;
+        let rs2: u8 = ((raw_bits >> 20) & 0x1F) as u8;
+        let func3: u8 = ((raw_bits >> 12) & 0x7) as u8;
+        let func7: u8 = ((raw_bits >> 25) & 0x7F) as u8;
+
+        // --------- immediates ----------
+        // numbers in variable name represent the bit position in the "immediate"
+        // not the instruction
+
+        // I-immediate
+        let imm_i: i32 = (raw_bits as i32) >> 20;
+
+        // S-immediate
+        let imm_11_5_s: i32 = ((raw_bits as i32) >> 20) & 0xFFFFFFE0;
+        let imm_4_0_s: i32 = ((raw_bits as i32) >> 7) & 0x1F;
+
+        let imm_s: i32 = imm_11_5_s | imm_4_0_s;
+
+        // B-immediate
+        let imm_10_5_b: i32 = ((raw_bits as i32) >> 20) & 0xFFFFF7E0;
+        let imm_4_1_b: i32 = ((raw_bits as i32) >> 7) & 0x1E;
+        let imm_11_b: i32 = (((raw_bits as i32) >> 7) & 0x1) << 11;
+
+        let imm_b: i32 = imm_10_5_b | imm_4_1_b | imm_11_b;
+
+        // U-immediate
+        let imm_u: i32 = (raw_bits & 0xFFFFF000) as i32;
+
+        // J-immediate
+        let imm_10_1_j: i32 = ((raw_bits as i32) >> 20) & 0xFFF007FE;
+        let imm_11_j: i32 = ((raw_bits as i32) >> 9) & 0x800;
+        let imm_19_12_j: i32 = (raw_bits as i32) & 0xFF000;
+
+        let imm_j: i32 = imm_10_1_j | imm_11_j | imm_19_12_j;
     }
 
 }
