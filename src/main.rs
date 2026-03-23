@@ -115,6 +115,7 @@ impl Cpu {
 
         let imm_j: i32 = imm_10_1_j | imm_11_j | imm_19_12_j;
 
+        // ----------- return Instruciton ----------------
         match (opcode_bits, func3, func7) {
             // R-type
             (0b0110011, 0b000, 0b0000000) => Instruction::Add { rd, rs1, rs2 },
@@ -273,4 +274,28 @@ impl Cpu {
 
 fn main() {
     println!("Hello, world!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_add() {
+        // ADD x1, x2, x3
+        // opcode=0110011, func3=000, func7=0000000
+        // rd=9, rs1=2, rs2=19
+        let raw: u32 = 0b0000000_10011_00010_000_01001_0110011;
+        let cpu = Cpu { regs: [0; 32], pc: 0 };
+        let decoded = cpu.decode(RawInstruction { bits: raw });
+
+        match decoded {
+            Instruction::Add { rd, rs1, rs2 } => {
+                assert_eq!(rd, 9);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 19);
+            }
+            _ => panic!("Expected Add instruction"),
+        }
+    }
 }
