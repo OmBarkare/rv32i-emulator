@@ -121,13 +121,13 @@ impl Cpu {
             (0b0110011, 0b000, 0b0000000) => Instruction::Add { rd, rs1, rs2 },
             (0b0110011, 0b000, 0b0100000) => Instruction::Sub { rd, rs1, rs2 },
             (0b0110011, 0b001, 0b0000000) => Instruction::Sll { rd, rs1, rs2 },
-            (0b0110011, 0b010, 0b0000000) => Instruction::Slt { rd, rs1, rs2 },
-            (0b0110011, 0b011, 0b0000000) => Instruction::Sltu { rd, rs1, rs2 },
-            (0b0110011, 0b100, 0b0000000) => Instruction::Xor { rd, rs1, rs2 },
             (0b0110011, 0b101, 0b0000000) => Instruction::Srl { rd, rs1, rs2 },
             (0b0110011, 0b101, 0b0100000) => Instruction::Sra { rd, rs1, rs2 },
-            (0b0110011, 0b110, 0b0000000) => Instruction::Or { rd, rs1, rs2 },
+            (0b0110011, 0b010, 0b0000000) => Instruction::Slt { rd, rs1, rs2 },
+            (0b0110011, 0b011, 0b0000000) => Instruction::Sltu { rd, rs1, rs2 },
             (0b0110011, 0b111, 0b0000000) => Instruction::And { rd, rs1, rs2 },
+            (0b0110011, 0b110, 0b0000000) => Instruction::Or { rd, rs1, rs2 },
+            (0b0110011, 0b100, 0b0000000) => Instruction::Xor { rd, rs1, rs2 },
 
             // I-type arithmetic
             (0b0010011, 0b000, _) => Instruction::Addi {
@@ -268,6 +268,57 @@ impl Cpu {
             }
 
             _ => Instruction::Illegal,
+        }
+    }
+
+    pub fn execute(&mut self, inst: Instruction) {
+        match inst {
+            // R-type
+            Instruction::Add { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] + self.regs[rs2 as usize];
+            }
+
+            Instruction::Sub { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] - self.regs[rs2 as usize];
+            }
+
+            Instruction::Sll { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] << self.regs[rs2 as usize];
+            }
+
+            Instruction::Srl { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] >> self.regs[rs2 as usize];
+            }
+
+            Instruction::Sra { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
+            }
+
+            Instruction::Slt { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = 0;
+                if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
+                    self.regs[rd as usize] = 1;
+                }
+            }
+
+            Instruction::Sltu { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = 0;
+                if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
+                    self.regs[rd as usize] = 1;
+                }
+            }
+
+            Instruction::And { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] & self.regs[rs2 as usize];
+            }
+
+            Instruction::Or { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] | self.regs[rs2 as usize];
+            }
+
+            Instruction::Xor { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] ^ self.regs[rs2 as usize];
+            }
         }
     }
 }
