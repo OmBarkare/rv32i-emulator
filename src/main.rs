@@ -537,6 +537,7 @@ impl Cpu {
 
             _ => {println!("illegal")}
         }
+        self.regs[0] = 0; // fixing rs0 to 0
         self.pc += 4;
     }
 }
