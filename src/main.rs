@@ -1,7 +1,7 @@
-
 struct Cpu {
     regs: [u32; 32],
     pc: u32,
+    mem: Vec<u8>,
 }
 
 enum Instruction {
@@ -93,7 +93,7 @@ impl Cpu {
         let imm_i: i32 = (raw_bits as i32) >> 20;
 
         // S-immediate
-        let imm_11_5_s: i32 = ((raw_bits as i32) >> 20) & (0xFFFFFFE0u32  as i32);
+        let imm_11_5_s: i32 = ((raw_bits as i32) >> 20) & (0xFFFFFFE0u32 as i32);
         let imm_4_0_s: i32 = ((raw_bits as i32) >> 7) & 0x1F;
 
         let imm_s: i32 = imm_11_5_s | imm_4_0_s;
@@ -160,12 +160,24 @@ impl Cpu {
                 rs1,
                 imm: imm_i,
             },
-            (0b0010011, 0b001, 0b0000000) => Instruction::Slli { rd, rs1, shamt:rs2 },
-            (0b0010011, 0b101, 0b0000000) => Instruction::Srli { rd, rs1, shamt:rs2 },
-            (0b0010011, 0b101, 0b0100000) => Instruction::Srai { rd, rs1, shamt:rs2 },
+            (0b0010011, 0b001, 0b0000000) => Instruction::Slli {
+                rd,
+                rs1,
+                shamt: rs2,
+            },
+            (0b0010011, 0b101, 0b0000000) => Instruction::Srli {
+                rd,
+                rs1,
+                shamt: rs2,
+            },
+            (0b0010011, 0b101, 0b0100000) => Instruction::Srai {
+                rd,
+                rs1,
+                shamt: rs2,
+            },
 
             // I-type loads
-            (0b0000011, 0b000, _) => Instruction::Lb {
+            (0b0000011, 0b010, _) => Instruction::Lw {
                 rd,
                 rs1,
                 imm: imm_i,
@@ -175,7 +187,7 @@ impl Cpu {
                 rs1,
                 imm: imm_i,
             },
-            (0b0000011, 0b010, _) => Instruction::Lw {
+            (0b0000011, 0b000, _) => Instruction::Lb {
                 rd,
                 rs1,
                 imm: imm_i,
@@ -319,7 +331,96 @@ impl Cpu {
             Instruction::Xor { rd, rs1, rs2 } => {
                 self.regs[rd as usize] = self.regs[rs1 as usize] ^ self.regs[rs2 as usize];
             }
+
+            // I-type arithmetic
+            // NOP is encoded as Addi x0, x0, 0
+            Instruction::Addi { rd, rs1, imm } => {
+                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm )as u32;
+            }
+
+            Instruction::Slti { rd, rs1, imm } => {
+                self.regs[rd as usize] = 0;
+                if (self.regs[rs1 as usize] as i32) < imm {
+                    self.regs[rd as usize] = 1;
+                }
+            }
+
+            Instruction::Sltiu { rd, rs1, imm } => {
+                self.regs[rd as usize] = 0;
+                if self.regs[rs1 as usize] < (imm as u32) {
+                    self.regs[rd as usize] = 1;
+                }
+            }
+
+            Instruction::Xori { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] ^ imm as u32;
+            }
+
+            Instruction::Ori { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] | imm as u32;
+            }
+
+            Instruction::Andi { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] & imm as u32;
+            }
+
+            Instruction::Slli { rd, rs1, shamt } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] << shamt;
+            }
+
+            Instruction::Srli { rd, rs1, shamt } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] >> shamt;
+            }
+
+            Instruction::Srai { rd, rs1, shamt } => {
+                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) >> shamt) as u32;
+            }
+
+            // I-type loads
+            Instruction::Lw { rd, rs1, imm } => {
+                // convert to u32 first because we dont want sign extension
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+                // little-endian format, most significant byte in higher address
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
+                self.regs[rd as usize] |= (self.mem[addr + 2] as u32) << 16;
+                self.regs[rd as usize] |= (self.mem[addr + 3] as u32) << 24;
+            }
+
+            Instruction::Lh { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= ((self.mem[addr + 1] as i8 as i32) << 8) as u32;
+            }
+            
+            Instruction::Lb { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                // i32 extends the sign, then cast back to u32 to store
+                self.regs[rd as usize] = (self.mem[addr] as i8) as i32 as u32;
+            }
+
+            Instruction::Lbu { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] = self.mem[addr] as u32;
+            }
+            
+            Instruction::Lhu { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
+            }
         }
+
+        self.pc += 4;
     }
 }
 
@@ -337,7 +438,11 @@ mod tests {
         // opcode=0110011, func3=000, func7=0000000
         // rd=9, rs1=2, rs2=19
         let raw: u32 = 0b0000000_10011_00010_000_01001_0110011;
-        let cpu = Cpu { regs: [0; 32], pc: 0 };
+        let cpu = Cpu {
+            regs: [0; 32],
+            pc: 0,
+            mem: Vec::from([0u8; 100]),
+        };
         let decoded = cpu.decode(RawInstruction { bits: raw });
 
         match decoded {
