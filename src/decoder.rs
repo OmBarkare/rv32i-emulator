@@ -213,26 +213,671 @@ impl Cpu {
 }
 
 // -------------- tests --------------------
-    #[test]
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    fn test_decode_add() {
-        // ADD x1, x2, x3
-        // opcode=0110011, func3=000, func7=0000000
-        // rd=9, rs1=2, rs2=19
-        let raw: u32 = 0b0000000_10011_00010_000_01001_0110011;
-        let cpu = Cpu {
+    fn make_cpu() -> Cpu {
+        Cpu {
             regs: [0; 32],
             pc: 0,
-            mem: Vec::from([0u8; 100]),
-        };
-        let decoded = cpu.decode(RawInstruction { bits: raw });
+            mem: vec![0u8; 1024],
+        }
+    }
 
+    // ---- R-type ----
+
+    #[test]
+    fn test_decode_add() {
+        // ADD x9, x2, x19
+        let raw: u32 = 0b0000000_10011_00010_000_01001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
         match decoded {
             Instruction::Add { rd, rs1, rs2 } => {
                 assert_eq!(rd, 9);
                 assert_eq!(rs1, 2);
                 assert_eq!(rs2, 19);
             }
-            _ => panic!("Expected Add instruction"),
+            _ => panic!("Expected Add"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sub() {
+        // SUB x1, x2, x3
+        let raw: u32 = 0b0100000_00011_00010_000_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sub { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Sub"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sll() {
+        // SLL x1, x2, x3
+        let raw: u32 = 0b0000000_00011_00010_001_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sll { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Sll"),
+        }
+    }
+
+    #[test]
+    fn test_decode_srl() {
+        // SRL x1, x2, x3
+        let raw: u32 = 0b0000000_00011_00010_101_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Srl { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Srl"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sra() {
+        // SRA x1, x2, x3
+        let raw: u32 = 0b0100000_00011_00010_101_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sra { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Sra"),
+        }
+    }
+
+    #[test]
+    fn test_decode_slt() {
+        let raw: u32 = 0b0000000_00011_00010_010_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Slt { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Slt"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sltu() {
+        let raw: u32 = 0b0000000_00011_00010_011_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sltu { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Sltu"),
+        }
+    }
+
+    #[test]
+    fn test_decode_and() {
+        let raw: u32 = 0b0000000_00011_00010_111_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::And { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected And"),
+        }
+    }
+
+    #[test]
+    fn test_decode_or() {
+        let raw: u32 = 0b0000000_00011_00010_110_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Or { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Or"),
+        }
+    }
+
+    #[test]
+    fn test_decode_xor() {
+        let raw: u32 = 0b0000000_00011_00010_100_00001_0110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Xor { rd, rs1, rs2 } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+            }
+            _ => panic!("Expected Xor"),
+        }
+    }
+
+    // ---- I-type arithmetic ----
+
+    #[test]
+    fn test_decode_addi_positive() {
+        // ADDI x1, x2, 42
+        let raw: u32 = 0b000000101010_00010_000_00001_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Addi { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 42);
+            }
+            _ => panic!("Expected Addi"),
+        }
+    }
+
+    #[test]
+    fn test_decode_addi_negative() {
+        // ADDI x1, x2, -1
+        // imm = 0b111111111111
+        let raw: u32 = 0b111111111111_00010_000_00001_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Addi { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, -1); // sign extended
+            }
+            _ => panic!("Expected Addi"),
+        }
+    }
+
+    #[test]
+    fn test_decode_slti() {
+        let raw: u32 = 0b000000000001_00001_010_00010_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Slti { rd, rs1, imm } => {
+                assert_eq!(rd, 2);
+                assert_eq!(rs1, 1);
+                assert_eq!(imm, 1);
+            }
+            _ => panic!("Expected Slti"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sltiu() {
+        let raw: u32 = 0b000000000001_00001_011_00010_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sltiu { rd, rs1, imm } => {
+                assert_eq!(rd, 2);
+                assert_eq!(rs1, 1);
+                assert_eq!(imm, 1);
+            }
+            _ => panic!("Expected Sltiu"),
+        }
+    }
+
+    #[test]
+    fn test_decode_xori() {
+        let raw: u32 = 0b000000001111_00001_100_00010_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Xori { rd, rs1, imm } => {
+                assert_eq!(rd, 2);
+                assert_eq!(rs1, 1);
+                assert_eq!(imm, 15);
+            }
+            _ => panic!("Expected Xori"),
+        }
+    }
+
+    #[test]
+    fn test_decode_ori() {
+        let raw: u32 = 0b000000001111_00001_110_00010_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Ori { rd, rs1, imm } => {
+                assert_eq!(rd, 2);
+                assert_eq!(rs1, 1);
+                assert_eq!(imm, 15);
+            }
+            _ => panic!("Expected Ori"),
+        }
+    }
+
+    #[test]
+    fn test_decode_andi() {
+        let raw: u32 = 0b000000001111_00001_111_00010_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Andi { rd, rs1, imm } => {
+                assert_eq!(rd, 2);
+                assert_eq!(rs1, 1);
+                assert_eq!(imm, 15);
+            }
+            _ => panic!("Expected Andi"),
+        }
+    }
+
+    #[test]
+    fn test_decode_slli() {
+        // SLLI x1, x2, shamt=4
+        let raw: u32 = 0b0000000_00100_00010_001_00001_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Slli { rd, rs1, shamt } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(shamt, 4);
+            }
+            _ => panic!("Expected Slli"),
+        }
+    }
+
+    #[test]
+    fn test_decode_srli() {
+        let raw: u32 = 0b0000000_00100_00010_101_00001_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Srli { rd, rs1, shamt } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(shamt, 4);
+            }
+            _ => panic!("Expected Srli"),
+        }
+    }
+
+    #[test]
+    fn test_decode_srai() {
+        let raw: u32 = 0b0100000_00100_00010_101_00001_0010011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Srai { rd, rs1, shamt } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(shamt, 4);
+            }
+            _ => panic!("Expected Srai"),
+        }
+    }
+
+    // ---- Loads ----
+
+    #[test]
+    fn test_decode_lw() {
+        // LW x1, 8(x2)
+        let raw: u32 = 0b000000001000_00010_010_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lw { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Lw"),
+        }
+    }
+
+    #[test]
+    fn test_decode_lw_negative_offset() {
+        // LW x1, -4(x2)
+        let raw: u32 = 0b111111111100_00010_010_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lw { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, -4);
+            }
+            _ => panic!("Expected Lw with negative offset"),
+        }
+    }
+
+    #[test]
+    fn test_decode_lh() {
+        let raw: u32 = 0b000000000100_00010_001_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lh { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 4);
+            }
+            _ => panic!("Expected Lh"),
+        }
+    }
+
+    #[test]
+    fn test_decode_lb() {
+        let raw: u32 = 0b000000000100_00010_000_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lb { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 4);
+            }
+            _ => panic!("Expected Lb"),
+        }
+    }
+
+    #[test]
+    fn test_decode_lbu() {
+        let raw: u32 = 0b000000000100_00010_100_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lbu { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 4);
+            }
+            _ => panic!("Expected Lbu"),
+        }
+    }
+
+    #[test]
+    fn test_decode_lhu() {
+        let raw: u32 = 0b000000000100_00010_101_00001_0000011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lhu { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 4);
+            }
+            _ => panic!("Expected Lhu"),
+        }
+    }
+
+    // ---- Stores ----
+
+    #[test]
+    fn test_decode_sw() {
+        // SW x3, 8(x2)  — imm=8, rs1=2, rs2=3
+        // imm[11:5]=0000000, imm[4:0]=01000
+        let raw: u32 = 0b0000000_00011_00010_010_01000_0100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sw { rs1, rs2, imm } => {
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Sw"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sw_negative_offset() {
+        // SW x3, -4(x2)
+        // imm=-4 = 0b111111111100
+        // imm[11:5]=1111111, imm[4:0]=11100
+        let raw: u32 = 0b1111111_00011_00010_010_11100_0100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sw { rs1, rs2, imm } => {
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+                assert_eq!(imm, -4);
+            }
+            _ => panic!("Expected Sw with negative offset"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sh() {
+        let raw: u32 = 0b0000000_00011_00010_001_01000_0100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sh { rs1, rs2, imm } => {
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Sh"),
+        }
+    }
+
+    #[test]
+    fn test_decode_sb() {
+        let raw: u32 = 0b0000000_00011_00010_000_01000_0100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Sb { rs1, rs2, imm } => {
+                assert_eq!(rs1, 2);
+                assert_eq!(rs2, 3);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Sb"),
+        }
+    }
+
+    // ---- Branches ----
+
+    #[test]
+    fn test_decode_beq() {
+        // BEQ x1, x2, +8
+        // imm=8=0b0000000001000
+        // bit12=0,bit11=0,imm[10:5]=000000,imm[4:1]=0100
+        // bit31=0,bits30:25=000000,bits11:8=0100,bit7=0
+        let raw: u32 = 0b0_000000_00010_00001_000_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Beq { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Beq"),
+        }
+    }
+
+    #[test]
+    fn test_decode_bne() {
+        let raw: u32 = 0b0_000000_00010_00001_001_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Bne { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Bne"),
+        }
+    }
+
+    #[test]
+    fn test_decode_blt() {
+        let raw: u32 = 0b0_000000_00010_00001_100_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Blt { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Blt"),
+        }
+    }
+
+    #[test]
+    fn test_decode_bge() {
+        let raw: u32 = 0b0_000000_00010_00001_101_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Bge { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Bge"),
+        }
+    }
+
+    #[test]
+    fn test_decode_bltu() {
+        let raw: u32 = 0b0_000000_00010_00001_110_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Bltu { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Bltu"),
+        }
+    }
+
+    #[test]
+    fn test_decode_bgeu() {
+        let raw: u32 = 0b0_000000_00010_00001_111_0100_0_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Bgeu { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Bgeu"),
+        }
+    }
+
+    #[test]
+    fn test_decode_branch_negative_offset() {
+        // BEQ x1, x2, -4
+        let raw: u32 = 0b1_111111_00010_00001_000_1110_1_1100011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Beq { rs1, rs2, imm } => {
+                assert_eq!(rs1, 1);
+                assert_eq!(rs2, 2);
+                assert_eq!(imm, -4);
+            }
+            _ => panic!("Expected Beq with negative offset"),
+        }
+    }
+
+    // ---- U-type ----
+
+    #[test]
+    fn test_decode_lui() {
+        // LUI x1, 0x12345
+        let raw: u32 = 0b00010010001101000101_00001_0110111;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Lui { rd, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(imm, 0x12345000u32 as i32);
+            }
+            _ => panic!("Expected Lui"),
+        }
+    }
+
+    #[test]
+    fn test_decode_auipc() {
+        let raw: u32 = 0b00010010001101000101_00001_0010111;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Auipc { rd, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(imm, 0x12345000u32 as i32);
+            }
+            _ => panic!("Expected Auipc"),
+        }
+    }
+
+    // ---- J-type ----
+
+    #[test]
+    fn test_decode_jal() {
+        // JAL x1, +8
+        // imm=8, rd=1
+        let raw: u32 = 0b0_0000000100_0_00000000_00001_1101111;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Jal { rd, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(imm, 8);
+            }
+            _ => panic!("Expected Jal"),
+        }
+    }
+
+    #[test]
+    fn test_decode_jalr() {
+        // JALR x1, x2, 4
+        let raw: u32 = 0b000000000100_00010_000_00001_1100111;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Jalr { rd, rs1, imm } => {
+                assert_eq!(rd, 1);
+                assert_eq!(rs1, 2);
+                assert_eq!(imm, 4);
+            }
+            _ => panic!("Expected Jalr"),
+        }
+    }
+
+    // ---- System ----
+
+    #[test]
+    fn test_decode_ecall() {
+        let raw: u32 = 0b000000000000_00000_000_00000_1110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Ecall => {}
+            _ => panic!("Expected Ecall"),
+        }
+    }
+
+    #[test]
+    fn test_decode_ebreak() {
+        let raw: u32 = 0b000000000001_00000_000_00000_1110011;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Ebreak => {}
+            _ => panic!("Expected Ebreak"),
+        }
+    }
+
+    // ---- Fence ----
+
+    #[test]
+    fn test_decode_fence() {
+        let raw: u32 = 0b0000_0000_0000_00000_000_00000_0001111;
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Fence => {}
+            _ => panic!("Expected Fence"),
+        }
+    }
+
+    // ---- Illegal ----
+
+    #[test]
+    fn test_decode_illegal() {
+        let raw: u32 = 0x00000000; // all zeros — not a valid instruction
+        let decoded = make_cpu().decode(RawInstruction { bits: raw });
+        match decoded {
+            Instruction::Illegal => {}
+            _ => panic!("Expected Illegal"),
+        }
         }
     }
