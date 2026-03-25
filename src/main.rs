@@ -211,7 +211,7 @@ impl Cpu {
             },
 
             // S-type
-            (0b0100011, 0b000, _) => Instruction::Sb {
+            (0b0100011, 0b010, _) => Instruction::Sw {
                 rs1,
                 rs2,
                 imm: imm_s,
@@ -221,7 +221,7 @@ impl Cpu {
                 rs2,
                 imm: imm_s,
             },
-            (0b0100011, 0b010, _) => Instruction::Sw {
+            (0b0100011, 0b000, _) => Instruction::Sb {
                 rs1,
                 rs2,
                 imm: imm_s,
@@ -303,7 +303,8 @@ impl Cpu {
             }
 
             Instruction::Sra { rd, rs1, rs2 } => {
-                self.regs[rd as usize] = (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
+                self.regs[rd as usize] =
+                    (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
             }
 
             Instruction::Slt { rd, rs1, rs2 } => {
@@ -335,7 +336,7 @@ impl Cpu {
             // I-type arithmetic
             // NOP is encoded as Addi x0, x0, 0
             Instruction::Addi { rd, rs1, imm } => {
-                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm )as u32;
+                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm) as u32;
             }
 
             Instruction::Slti { rd, rs1, imm } => {
@@ -395,7 +396,7 @@ impl Cpu {
                 self.regs[rd as usize] |= self.mem[addr] as u32;
                 self.regs[rd as usize] |= ((self.mem[addr + 1] as i8 as i32) << 8) as u32;
             }
-            
+
             Instruction::Lb { rd, rs1, imm } => {
                 let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
                 self.regs[rd as usize] = 0;
@@ -410,7 +411,7 @@ impl Cpu {
 
                 self.regs[rd as usize] = self.mem[addr] as u32;
             }
-            
+
             Instruction::Lhu { rd, rs1, imm } => {
                 let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
                 self.regs[rd as usize] = 0;
@@ -418,8 +419,124 @@ impl Cpu {
                 self.regs[rd as usize] |= self.mem[addr] as u32;
                 self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
             }
-        }
 
+            // I-type Jump
+            Instruction::Jalr { rd, rs1, imm } => {
+                let dest_addr: u32 = (self.regs[rs1 as usize] as i32 + imm) as u32 & 0xFFFFFFFE;
+                self.regs[rd as usize] = self.pc + 4;
+                // -4 because pc is incremented by 4 at the end of execute function
+                self.pc = dest_addr - 4;
+            }
+
+            // S-type
+            Instruction::Sw { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
+                let b_2 = ((self.regs[rs2 as usize] & 0xFF0000) >> 16) as u8;
+                let b_3 = ((self.regs[rs2 as usize] & 0xFF000000) >> 24) as u8;
+
+                self.mem[addr as usize] = b_0;
+                self.mem[addr as usize + 1] = b_1;
+                self.mem[addr as usize + 2] = b_2;
+                self.mem[addr as usize + 3] = b_3;
+            }
+
+            Instruction::Sh { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
+
+                self.mem[addr as usize] = b_0;
+                self.mem[addr as usize + 1] = b_1;
+            }
+
+            Instruction::Sb { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+
+                self.mem[addr as usize] = b_0;
+            }
+
+            // B-type instructions
+            Instruction::Beq { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] == self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bne { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] != self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Blt { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bge { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if (self.regs[rs1 as usize] as i32) >= (self.regs[rs2 as usize] as i32) {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bltu { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bgeu { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] >= self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            // U-type
+            Instruction::Lui { rd, imm } => {
+                self.regs[rd as usize] = imm as u32;
+            }
+
+            Instruction::Auipc { rd, imm } => {
+                self.regs[rd as usize] = (self.pc as i32 + imm) as u32;
+            }
+
+            // J=-type
+
+            Instruction::Jal { rd, imm } => {
+                self.regs[rd as usize] = self.pc + 4;
+                self.pc = (self.pc as i32 + imm) as u32 - 4;
+            }
+
+            Instruction::Ecall => {
+                println!("Ah.. parley! The code requests an audience with an operating system! whats that? no OS? well then, we're of the edge of the map, mate. Abondoning ship! savyy?");
+                panic!("captains dont abandon their ship!");
+            }
+
+            Instruction::Ebreak => {
+                println!("Haltt!! wait until they figure out where all the rums gone!");
+                panic!("rum not found");
+            }
+
+            Instruction::Fence => {println!("fence")}
+
+            _ => {println!("illegal")}
+        }
         self.pc += 4;
     }
 }
