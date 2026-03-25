@@ -3,262 +3,267 @@ use crate::instructions::Instruction;
 
 impl Cpu {
     pub fn execute(&mut self, inst: Instruction) {
-            match inst {
-                // R-type
-                Instruction::Add { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] + self.regs[rs2 as usize];
+        match inst {
+            // R-type
+            Instruction::Add { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] + self.regs[rs2 as usize];
+            }
+
+            Instruction::Sub { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] - self.regs[rs2 as usize];
+            }
+
+            Instruction::Sll { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] << self.regs[rs2 as usize];
+            }
+
+            Instruction::Srl { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] >> self.regs[rs2 as usize];
+            }
+
+            Instruction::Sra { rd, rs1, rs2 } => {
+                self.regs[rd as usize] =
+                    (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
+            }
+
+            Instruction::Slt { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = 0;
+                if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
+                    self.regs[rd as usize] = 1;
                 }
-    
-                Instruction::Sub { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] - self.regs[rs2 as usize];
+            }
+
+            Instruction::Sltu { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = 0;
+                if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
+                    self.regs[rd as usize] = 1;
                 }
-    
-                Instruction::Sll { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] << self.regs[rs2 as usize];
+            }
+
+            Instruction::And { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] & self.regs[rs2 as usize];
+            }
+
+            Instruction::Or { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] | self.regs[rs2 as usize];
+            }
+
+            Instruction::Xor { rd, rs1, rs2 } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] ^ self.regs[rs2 as usize];
+            }
+
+            // I-type arithmetic
+            // NOP is encoded as Addi x0, x0, 0
+            Instruction::Addi { rd, rs1, imm } => {
+                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm) as u32;
+            }
+
+            Instruction::Slti { rd, rs1, imm } => {
+                self.regs[rd as usize] = 0;
+                if (self.regs[rs1 as usize] as i32) < imm {
+                    self.regs[rd as usize] = 1;
                 }
-    
-                Instruction::Srl { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] >> self.regs[rs2 as usize];
+            }
+
+            Instruction::Sltiu { rd, rs1, imm } => {
+                self.regs[rd as usize] = 0;
+                if self.regs[rs1 as usize] < (imm as u32) {
+                    self.regs[rd as usize] = 1;
                 }
-    
-                Instruction::Sra { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] =
-                        (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
-                }
-    
-                Instruction::Slt { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = 0;
-                    if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
-                        self.regs[rd as usize] = 1;
-                    }
-                }
-    
-                Instruction::Sltu { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = 0;
-                    if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
-                        self.regs[rd as usize] = 1;
-                    }
-                }
-    
-                Instruction::And { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] & self.regs[rs2 as usize];
-                }
-    
-                Instruction::Or { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] | self.regs[rs2 as usize];
-                }
-    
-                Instruction::Xor { rd, rs1, rs2 } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] ^ self.regs[rs2 as usize];
-                }
-    
-                // I-type arithmetic
-                // NOP is encoded as Addi x0, x0, 0
-                Instruction::Addi { rd, rs1, imm } => {
-                    self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm) as u32;
-                }
-    
-                Instruction::Slti { rd, rs1, imm } => {
-                    self.regs[rd as usize] = 0;
-                    if (self.regs[rs1 as usize] as i32) < imm {
-                        self.regs[rd as usize] = 1;
-                    }
-                }
-    
-                Instruction::Sltiu { rd, rs1, imm } => {
-                    self.regs[rd as usize] = 0;
-                    if self.regs[rs1 as usize] < (imm as u32) {
-                        self.regs[rd as usize] = 1;
-                    }
-                }
-    
-                Instruction::Xori { rd, rs1, imm } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] ^ imm as u32;
-                }
-    
-                Instruction::Ori { rd, rs1, imm } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] | imm as u32;
-                }
-    
-                Instruction::Andi { rd, rs1, imm } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] & imm as u32;
-                }
-    
-                Instruction::Slli { rd, rs1, shamt } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] << shamt;
-                }
-    
-                Instruction::Srli { rd, rs1, shamt } => {
-                    self.regs[rd as usize] = self.regs[rs1 as usize] >> shamt;
-                }
-    
-                Instruction::Srai { rd, rs1, shamt } => {
-                    self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) >> shamt) as u32;
-                }
-    
-                // I-type loads
-                Instruction::Lw { rd, rs1, imm } => {
-                    // convert to u32 first because we dont want sign extension
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    self.regs[rd as usize] = 0;
-                    // little-endian format, most significant byte in higher address
-                    self.regs[rd as usize] |= self.mem[addr] as u32;
-                    self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
-                    self.regs[rd as usize] |= (self.mem[addr + 2] as u32) << 16;
-                    self.regs[rd as usize] |= (self.mem[addr + 3] as u32) << 24;
-                }
-    
-                Instruction::Lh { rd, rs1, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    self.regs[rd as usize] = 0;
-    
-                    self.regs[rd as usize] |= self.mem[addr] as u32;
-                    self.regs[rd as usize] |= ((self.mem[addr + 1] as i8 as i32) << 8) as u32;
-                }
-    
-                Instruction::Lb { rd, rs1, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    self.regs[rd as usize] = 0;
-    
-                    // i32 extends the sign, then cast back to u32 to store
-                    self.regs[rd as usize] = (self.mem[addr] as i8) as i32 as u32;
-                }
-    
-                Instruction::Lbu { rd, rs1, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    self.regs[rd as usize] = 0;
-    
-                    self.regs[rd as usize] = self.mem[addr] as u32;
-                }
-    
-                Instruction::Lhu { rd, rs1, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    self.regs[rd as usize] = 0;
-    
-                    self.regs[rd as usize] |= self.mem[addr] as u32;
-                    self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
-                }
-    
-                // I-type Jump
-                Instruction::Jalr { rd, rs1, imm } => {
-                    let dest_addr: u32 = (self.regs[rs1 as usize] as i32 + imm) as u32 & 0xFFFFFFFE;
-                    self.regs[rd as usize] = self.pc + 4;
-                    // -4 because pc is incremented by 4 at the end of execute function
+            }
+
+            Instruction::Xori { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] ^ imm as u32;
+            }
+
+            Instruction::Ori { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] | imm as u32;
+            }
+
+            Instruction::Andi { rd, rs1, imm } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] & imm as u32;
+            }
+
+            Instruction::Slli { rd, rs1, shamt } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] << shamt;
+            }
+
+            Instruction::Srli { rd, rs1, shamt } => {
+                self.regs[rd as usize] = self.regs[rs1 as usize] >> shamt;
+            }
+
+            Instruction::Srai { rd, rs1, shamt } => {
+                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) >> shamt) as u32;
+            }
+
+            // I-type loads
+            Instruction::Lw { rd, rs1, imm } => {
+                // convert to u32 first because we dont want sign extension
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+                // little-endian format, most significant byte in higher address
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
+                self.regs[rd as usize] |= (self.mem[addr + 2] as u32) << 16;
+                self.regs[rd as usize] |= (self.mem[addr + 3] as u32) << 24;
+            }
+
+            Instruction::Lh { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= ((self.mem[addr + 1] as i8 as i32) << 8) as u32;
+            }
+
+            Instruction::Lb { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                // i32 extends the sign, then cast back to u32 to store
+                self.regs[rd as usize] = (self.mem[addr] as i8) as i32 as u32;
+            }
+
+            Instruction::Lbu { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] = self.mem[addr] as u32;
+            }
+
+            Instruction::Lhu { rd, rs1, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                self.regs[rd as usize] = 0;
+
+                self.regs[rd as usize] |= self.mem[addr] as u32;
+                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
+            }
+
+            // I-type Jump
+            Instruction::Jalr { rd, rs1, imm } => {
+                let dest_addr: u32 = (self.regs[rs1 as usize] as i32 + imm) as u32 & 0xFFFFFFFE;
+                self.regs[rd as usize] = self.pc + 4;
+                // -4 because pc is incremented by 4 at the end of execute function
+                self.pc = dest_addr - 4;
+            }
+
+            // S-type
+            Instruction::Sw { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
+                let b_2 = ((self.regs[rs2 as usize] & 0xFF0000) >> 16) as u8;
+                let b_3 = ((self.regs[rs2 as usize] & 0xFF000000) >> 24) as u8;
+
+                self.mem[addr as usize] = b_0;
+                self.mem[addr as usize + 1] = b_1;
+                self.mem[addr as usize + 2] = b_2;
+                self.mem[addr as usize + 3] = b_3;
+            }
+
+            Instruction::Sh { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
+
+                self.mem[addr as usize] = b_0;
+                self.mem[addr as usize + 1] = b_1;
+            }
+
+            Instruction::Sb { rs1, rs2, imm } => {
+                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+
+                self.mem[addr as usize] = b_0;
+            }
+
+            // B-type instructions
+            Instruction::Beq { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] == self.regs[rs2 as usize] {
                     self.pc = dest_addr - 4;
                 }
-    
-                // S-type
-                Instruction::Sw { rs1, rs2, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
-                    let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
-                    let b_2 = ((self.regs[rs2 as usize] & 0xFF0000) >> 16) as u8;
-                    let b_3 = ((self.regs[rs2 as usize] & 0xFF000000) >> 24) as u8;
-    
-                    self.mem[addr as usize] = b_0;
-                    self.mem[addr as usize + 1] = b_1;
-                    self.mem[addr as usize + 2] = b_2;
-                    self.mem[addr as usize + 3] = b_3;
-                }
-    
-                Instruction::Sh { rs1, rs2, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
-                    let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
-    
-                    self.mem[addr as usize] = b_0;
-                    self.mem[addr as usize + 1] = b_1;
-                }
-    
-                Instruction::Sb { rs1, rs2, imm } => {
-                    let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                    let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
-    
-                    self.mem[addr as usize] = b_0;
-                }
-    
-                // B-type instructions
-                Instruction::Beq { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if self.regs[rs1 as usize] == self.regs[rs2 as usize] {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                Instruction::Bne { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if self.regs[rs1 as usize] != self.regs[rs2 as usize] {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                Instruction::Blt { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                Instruction::Bge { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if (self.regs[rs1 as usize] as i32) >= (self.regs[rs2 as usize] as i32) {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                Instruction::Bltu { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                Instruction::Bgeu { rs1, rs2, imm } => {
-                    let dest_addr: u32 = (self.pc as i32 + imm) as u32;
-    
-                    if self.regs[rs1 as usize] >= self.regs[rs2 as usize] {
-                        self.pc = dest_addr - 4;
-                    }
-                }
-    
-                // U-type
-                Instruction::Lui { rd, imm } => {
-                    self.regs[rd as usize] = imm as u32;
-                }
-    
-                Instruction::Auipc { rd, imm } => {
-                    self.regs[rd as usize] = (self.pc as i32 + imm) as u32;
-                }
-    
-                // J=-type
-    
-                Instruction::Jal { rd, imm } => {
-                    self.regs[rd as usize] = self.pc + 4;
-                    self.pc = (self.pc as i32 + imm) as u32 - 4;
-                }
-    
-                Instruction::Ecall => {
-                    println!("Ah.. parley! The code requests an audience with an operating system! whats that? no OS? well then, we're of the edge of the map, mate. Abondoning ship! savyy?");
-                    panic!("captains dont abandon their ship!");
-                }
-    
-                Instruction::Ebreak => {
-                    println!("Haltt!! wait until they figure out where all the rums gone!");
-                    panic!("rum not found");
-                }
-    
-                Instruction::Fence => {println!("fence")}
-    
-                _ => {println!("illegal")}
             }
-            self.regs[0] = 0; // fixing rs0 to 0
-            self.pc += 4;
+
+            Instruction::Bne { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] != self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Blt { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bge { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if (self.regs[rs1 as usize] as i32) >= (self.regs[rs2 as usize] as i32) {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bltu { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            Instruction::Bgeu { rs1, rs2, imm } => {
+                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+
+                if self.regs[rs1 as usize] >= self.regs[rs2 as usize] {
+                    self.pc = dest_addr - 4;
+                }
+            }
+
+            // U-type
+            Instruction::Lui { rd, imm } => {
+                self.regs[rd as usize] = imm as u32;
+            }
+
+            Instruction::Auipc { rd, imm } => {
+                self.regs[rd as usize] = (self.pc as i32 + imm) as u32;
+            }
+
+            // J=-type
+            Instruction::Jal { rd, imm } => {
+                self.regs[rd as usize] = self.pc + 4;
+                self.pc = (self.pc as i32 + imm) as u32 - 4;
+            }
+
+            Instruction::Ecall => {
+                println!(
+                    "Ah.. parley! The code requests an audience with an operating system! whats that? no OS? well then, we're of the edge of the map, mate. Abondoning ship! savyy?"
+                );
+                panic!("captains dont abandon their ship!");
+            }
+
+            Instruction::Ebreak => {
+                println!("Haltt!! wait until they figure out where all the rums gone!");
+                panic!("rum not found");
+            }
+
+            Instruction::Fence => {
+                println!("fence")
+            }
+
+            _ => {
+                println!("illegal")
+            }
         }
+        self.regs[0] = 0; // fixing rs0 to 0
+        self.pc += 4;
+    }
 }
 
 // ---------------- tests -----------------
@@ -266,7 +271,6 @@ impl Cpu {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     fn make_cpu() -> Cpu {
         Cpu {
@@ -283,7 +287,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 10;
         cpu.regs[2] = 20;
-        cpu.execute(Instruction::Add { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Add {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 30);
     }
 
@@ -292,7 +300,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 20;
         cpu.regs[2] = 10;
-        cpu.execute(Instruction::Sub { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Sub {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 10);
     }
 
@@ -301,7 +313,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 1;
         cpu.regs[2] = 4;
-        cpu.execute(Instruction::Sll { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Sll {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 16);
     }
 
@@ -310,7 +326,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 16;
         cpu.regs[2] = 4;
-        cpu.execute(Instruction::Srl { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Srl {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 1);
     }
 
@@ -319,7 +339,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = (-16i32) as u32;
         cpu.regs[2] = 2;
-        cpu.execute(Instruction::Sra { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Sra {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3] as i32, -4); // sign bit preserved
     }
 
@@ -328,7 +352,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = (-1i32) as u32;
         cpu.regs[2] = 1;
-        cpu.execute(Instruction::Slt { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Slt {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 1);
     }
 
@@ -337,7 +365,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 1;
         cpu.regs[2] = (-1i32) as u32;
-        cpu.execute(Instruction::Slt { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Slt {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 0);
     }
 
@@ -346,7 +378,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 1;
         cpu.regs[2] = 0xFFFFFFFF; // large unsigned, but -1 signed
-        cpu.execute(Instruction::Sltu { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Sltu {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 1); // 1 < 0xFFFFFFFF unsigned
     }
 
@@ -355,7 +391,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
-        cpu.execute(Instruction::And { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::And {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 0b1000);
     }
 
@@ -364,7 +404,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
-        cpu.execute(Instruction::Or { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Or {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 0b1110);
     }
 
@@ -373,7 +417,11 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
-        cpu.execute(Instruction::Xor { rd: 3, rs1: 1, rs2: 2 });
+        cpu.execute(Instruction::Xor {
+            rd: 3,
+            rs1: 1,
+            rs2: 2,
+        });
         assert_eq!(cpu.regs[3], 0b0110);
     }
 
@@ -383,7 +431,11 @@ mod tests {
     fn test_addi_positive() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 10;
-        cpu.execute(Instruction::Addi { rd: 2, rs1: 1, imm: 5 });
+        cpu.execute(Instruction::Addi {
+            rd: 2,
+            rs1: 1,
+            imm: 5,
+        });
         assert_eq!(cpu.regs[2], 15);
     }
 
@@ -391,7 +443,11 @@ mod tests {
     fn test_addi_negative_imm() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 10;
-        cpu.execute(Instruction::Addi { rd: 2, rs1: 1, imm: -5 });
+        cpu.execute(Instruction::Addi {
+            rd: 2,
+            rs1: 1,
+            imm: -5,
+        });
         assert_eq!(cpu.regs[2], 5);
     }
 
@@ -399,7 +455,11 @@ mod tests {
     fn test_addi_nop() {
         // NOP = ADDI x0, x0, 0 — x0 must always stay 0
         let mut cpu = make_cpu();
-        cpu.execute(Instruction::Addi { rd: 0, rs1: 0, imm: 0 });
+        cpu.execute(Instruction::Addi {
+            rd: 0,
+            rs1: 0,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[0], 0);
     }
 
@@ -407,7 +467,11 @@ mod tests {
     fn test_slti_true() {
         let mut cpu = make_cpu();
         cpu.regs[1] = (-5i32) as u32;
-        cpu.execute(Instruction::Slti { rd: 2, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Slti {
+            rd: 2,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[2], 1);
     }
 
@@ -415,7 +479,11 @@ mod tests {
     fn test_sltiu() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 4;
-        cpu.execute(Instruction::Sltiu { rd: 2, rs1: 1, imm: 5 });
+        cpu.execute(Instruction::Sltiu {
+            rd: 2,
+            rs1: 1,
+            imm: 5,
+        });
         assert_eq!(cpu.regs[2], 1);
     }
 
@@ -423,7 +491,11 @@ mod tests {
     fn test_xori() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
-        cpu.execute(Instruction::Xori { rd: 2, rs1: 1, imm: 0b1010 });
+        cpu.execute(Instruction::Xori {
+            rd: 2,
+            rs1: 1,
+            imm: 0b1010,
+        });
         assert_eq!(cpu.regs[2], 0b0110);
     }
 
@@ -431,7 +503,11 @@ mod tests {
     fn test_ori() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
-        cpu.execute(Instruction::Ori { rd: 2, rs1: 1, imm: 0b1010 });
+        cpu.execute(Instruction::Ori {
+            rd: 2,
+            rs1: 1,
+            imm: 0b1010,
+        });
         assert_eq!(cpu.regs[2], 0b1110);
     }
 
@@ -439,7 +515,11 @@ mod tests {
     fn test_andi() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 0b1100;
-        cpu.execute(Instruction::Andi { rd: 2, rs1: 1, imm: 0b1010 });
+        cpu.execute(Instruction::Andi {
+            rd: 2,
+            rs1: 1,
+            imm: 0b1010,
+        });
         assert_eq!(cpu.regs[2], 0b1000);
     }
 
@@ -447,7 +527,11 @@ mod tests {
     fn test_slli() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 1;
-        cpu.execute(Instruction::Slli { rd: 2, rs1: 1, shamt: 3 });
+        cpu.execute(Instruction::Slli {
+            rd: 2,
+            rs1: 1,
+            shamt: 3,
+        });
         assert_eq!(cpu.regs[2], 8);
     }
 
@@ -455,7 +539,11 @@ mod tests {
     fn test_srli() {
         let mut cpu = make_cpu();
         cpu.regs[1] = 16;
-        cpu.execute(Instruction::Srli { rd: 2, rs1: 1, shamt: 2 });
+        cpu.execute(Instruction::Srli {
+            rd: 2,
+            rs1: 1,
+            shamt: 2,
+        });
         assert_eq!(cpu.regs[2], 4);
     }
 
@@ -463,7 +551,11 @@ mod tests {
     fn test_srai_negative() {
         let mut cpu = make_cpu();
         cpu.regs[1] = (-8i32) as u32;
-        cpu.execute(Instruction::Srai { rd: 2, rs1: 1, shamt: 1 });
+        cpu.execute(Instruction::Srai {
+            rd: 2,
+            rs1: 1,
+            shamt: 1,
+        });
         assert_eq!(cpu.regs[2] as i32, -4);
     }
 
@@ -474,8 +566,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100; // base address
         cpu.regs[2] = 0xDEADBEEF;
-        cpu.execute(Instruction::Sw { rs1: 1, rs2: 2, imm: 0 });
-        cpu.execute(Instruction::Lw { rd: 3, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Sw {
+            rs1: 1,
+            rs2: 2,
+            imm: 0,
+        });
+        cpu.execute(Instruction::Lw {
+            rd: 3,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[3], 0xDEADBEEF);
     }
 
@@ -484,8 +584,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0xFF; // -1 as i8
-        cpu.execute(Instruction::Sb { rs1: 1, rs2: 2, imm: 0 });
-        cpu.execute(Instruction::Lb { rd: 3, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Sb {
+            rs1: 1,
+            rs2: 2,
+            imm: 0,
+        });
+        cpu.execute(Instruction::Lb {
+            rd: 3,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[3] as i32, -1); // sign extended
     }
 
@@ -494,8 +602,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0xFF;
-        cpu.execute(Instruction::Sb { rs1: 1, rs2: 2, imm: 0 });
-        cpu.execute(Instruction::Lbu { rd: 3, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Sb {
+            rs1: 1,
+            rs2: 2,
+            imm: 0,
+        });
+        cpu.execute(Instruction::Lbu {
+            rd: 3,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[3], 255); // zero extended, not -1
     }
 
@@ -504,8 +620,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x8000; // negative as i16
-        cpu.execute(Instruction::Sh { rs1: 1, rs2: 2, imm: 0 });
-        cpu.execute(Instruction::Lh { rd: 3, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Sh {
+            rs1: 1,
+            rs2: 2,
+            imm: 0,
+        });
+        cpu.execute(Instruction::Lh {
+            rd: 3,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[3] as i32, -32768); // sign extended
     }
 
@@ -514,8 +638,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x8000;
-        cpu.execute(Instruction::Sh { rs1: 1, rs2: 2, imm: 0 });
-        cpu.execute(Instruction::Lhu { rd: 3, rs1: 1, imm: 0 });
+        cpu.execute(Instruction::Sh {
+            rs1: 1,
+            rs2: 2,
+            imm: 0,
+        });
+        cpu.execute(Instruction::Lhu {
+            rd: 3,
+            rs1: 1,
+            imm: 0,
+        });
         assert_eq!(cpu.regs[3], 0x8000); // zero extended
     }
 
@@ -524,8 +656,16 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x12345678;
-        cpu.execute(Instruction::Sw { rs1: 1, rs2: 2, imm: 4 }); // store at 104
-        cpu.execute(Instruction::Lw { rd: 3, rs1: 1, imm: 4 }); // load from 104
+        cpu.execute(Instruction::Sw {
+            rs1: 1,
+            rs2: 2,
+            imm: 4,
+        }); // store at 104
+        cpu.execute(Instruction::Lw {
+            rd: 3,
+            rs1: 1,
+            imm: 4,
+        }); // load from 104
         assert_eq!(cpu.regs[3], 0x12345678);
     }
 
@@ -537,7 +677,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
-        cpu.execute(Instruction::Beq { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Beq {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108); // 100 + 8, then +4 from pc increment
     }
 
@@ -547,7 +691,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
-        cpu.execute(Instruction::Beq { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Beq {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 104); // not taken, normal increment
     }
 
@@ -557,7 +705,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
-        cpu.execute(Instruction::Bne { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Bne {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108);
     }
 
@@ -567,7 +719,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = (-1i32) as u32;
         cpu.regs[2] = 1;
-        cpu.execute(Instruction::Blt { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Blt {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108);
     }
 
@@ -577,7 +733,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
-        cpu.execute(Instruction::Bge { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Bge {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108);
     }
 
@@ -587,7 +747,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 1;
         cpu.regs[2] = 0xFFFFFFFF; // large unsigned
-        cpu.execute(Instruction::Bltu { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Bltu {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108);
     }
 
@@ -597,7 +761,11 @@ mod tests {
         cpu.pc = 100;
         cpu.regs[1] = 0xFFFFFFFF;
         cpu.regs[2] = 1;
-        cpu.execute(Instruction::Bgeu { rs1: 1, rs2: 2, imm: 8 });
+        cpu.execute(Instruction::Bgeu {
+            rs1: 1,
+            rs2: 2,
+            imm: 8,
+        });
         assert_eq!(cpu.pc, 108);
     }
 
@@ -606,7 +774,10 @@ mod tests {
     #[test]
     fn test_lui() {
         let mut cpu = make_cpu();
-        cpu.execute(Instruction::Lui { rd: 1, imm: 0x12345000u32 as i32 });
+        cpu.execute(Instruction::Lui {
+            rd: 1,
+            imm: 0x12345000u32 as i32,
+        });
         assert_eq!(cpu.regs[1], 0x12345000);
     }
 
@@ -626,7 +797,7 @@ mod tests {
         cpu.pc = 100;
         cpu.execute(Instruction::Jal { rd: 1, imm: 8 });
         assert_eq!(cpu.regs[1], 104); // return address = pc + 4
-        assert_eq!(cpu.pc, 108);      // jumped to 100 + 8, then +4
+        assert_eq!(cpu.pc, 108); // jumped to 100 + 8, then +4
     }
 
     #[test]
@@ -634,9 +805,13 @@ mod tests {
         let mut cpu = make_cpu();
         cpu.pc = 100;
         cpu.regs[1] = 200;
-        cpu.execute(Instruction::Jalr { rd: 2, rs1: 1, imm: 4 });
+        cpu.execute(Instruction::Jalr {
+            rd: 2,
+            rs1: 1,
+            imm: 4,
+        });
         assert_eq!(cpu.regs[2], 104); // return address
-        assert_eq!(cpu.pc, 204);      // jumped to 200 + 4, then +4
+        assert_eq!(cpu.pc, 204); // jumped to 200 + 4, then +4
     }
 
     // ---- x0 hardwired to zero ----
@@ -644,7 +819,11 @@ mod tests {
     #[test]
     fn test_x0_always_zero() {
         let mut cpu = make_cpu();
-        cpu.execute(Instruction::Addi { rd: 0, rs1: 0, imm: 42 });
+        cpu.execute(Instruction::Addi {
+            rd: 0,
+            rs1: 0,
+            imm: 42,
+        });
         assert_eq!(cpu.regs[0], 0); // x0 must never change
     }
 }
