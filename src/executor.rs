@@ -142,9 +142,8 @@ impl Cpu {
             // I-type Jump
             Instruction::Jalr { rd, rs1, imm } => {
                 let dest_addr: u32 = (self.regs[rs1 as usize] as i32 + imm) as u32 & 0xFFFFFFFE;
-                self.regs[rd as usize] = self.pc + 4;
-                // -4 because pc is incremented by 4 at the end of execute function
-                self.pc = dest_addr - 4;
+                self.regs[rd as usize] = self.pc;
+                self.pc = dest_addr;
             }
 
             // S-type
@@ -182,7 +181,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] == self.regs[rs2 as usize] {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -190,7 +189,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] != self.regs[rs2 as usize] {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -198,7 +197,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -206,7 +205,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if (self.regs[rs1 as usize] as i32) >= (self.regs[rs2 as usize] as i32) {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -214,7 +213,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -222,7 +221,7 @@ impl Cpu {
                 let dest_addr: u32 = (self.pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] >= self.regs[rs2 as usize] {
-                    self.pc = dest_addr - 4;
+                    self.pc = dest_addr;
                 }
             }
 
@@ -238,7 +237,7 @@ impl Cpu {
             // J=-type
             Instruction::Jal { rd, imm } => {
                 self.regs[rd as usize] = self.pc + 4;
-                self.pc = (self.pc as i32 + imm) as u32 - 4;
+                self.pc = (self.pc as i32 + imm) as u32;
             }
 
             Instruction::Ecall => {
@@ -262,7 +261,6 @@ impl Cpu {
             }
         }
         self.regs[0] = 0; // fixing rs0 to 0
-        self.pc += 4;
     }
 }
 
@@ -810,7 +808,7 @@ mod tests {
             rs1: 1,
             imm: 4,
         });
-        assert_eq!(cpu.regs[2], 104); // return address
+        assert_eq!(cpu.regs[2], 100); // return address
         assert_eq!(cpu.pc, 204); // jumped to 200 + 4, then +4
     }
 
