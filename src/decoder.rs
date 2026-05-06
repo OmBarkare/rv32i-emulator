@@ -221,6 +221,7 @@ mod tests {
             regs: [0; 32],
             pc: 0,
             mem: vec![0u8; 1024],
+            curr_pc: 0,
         }
     }
 
