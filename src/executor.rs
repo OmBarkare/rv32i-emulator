@@ -142,7 +142,7 @@ impl Cpu {
             // I-type Jump
             Instruction::Jalr { rd, rs1, imm } => {
                 let dest_addr: u32 = (self.regs[rs1 as usize] as i32 + imm) as u32 & 0xFFFFFFFE;
-                self.regs[rd as usize] = self.pc;
+                self.regs[rd as usize] = self.curr_pc + 4;
                 self.pc = dest_addr;
             }
 
@@ -178,7 +178,7 @@ impl Cpu {
 
             // B-type instructions
             Instruction::Beq { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] == self.regs[rs2 as usize] {
                     self.pc = dest_addr;
@@ -186,7 +186,7 @@ impl Cpu {
             }
 
             Instruction::Bne { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] != self.regs[rs2 as usize] {
                     self.pc = dest_addr;
@@ -194,7 +194,7 @@ impl Cpu {
             }
 
             Instruction::Blt { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if (self.regs[rs1 as usize] as i32) < (self.regs[rs2 as usize] as i32) {
                     self.pc = dest_addr;
@@ -202,7 +202,7 @@ impl Cpu {
             }
 
             Instruction::Bge { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if (self.regs[rs1 as usize] as i32) >= (self.regs[rs2 as usize] as i32) {
                     self.pc = dest_addr;
@@ -210,7 +210,7 @@ impl Cpu {
             }
 
             Instruction::Bltu { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] < self.regs[rs2 as usize] {
                     self.pc = dest_addr;
@@ -218,7 +218,7 @@ impl Cpu {
             }
 
             Instruction::Bgeu { rs1, rs2, imm } => {
-                let dest_addr: u32 = (self.pc as i32 + imm) as u32;
+                let dest_addr: u32 = (self.curr_pc as i32 + imm) as u32;
 
                 if self.regs[rs1 as usize] >= self.regs[rs2 as usize] {
                     self.pc = dest_addr;
@@ -231,13 +231,13 @@ impl Cpu {
             }
 
             Instruction::Auipc { rd, imm } => {
-                self.regs[rd as usize] = (self.pc as i32 + imm) as u32;
+                self.regs[rd as usize] = (self.curr_pc as i32 + imm) as u32;
             }
 
             // J=-type
             Instruction::Jal { rd, imm } => {
-                self.regs[rd as usize] = self.pc + 4;
-                self.pc = (self.pc as i32 + imm) as u32;
+                self.regs[rd as usize] = self.curr_pc + 4;
+                self.pc = (self.curr_pc as i32 + imm) as u32;
             }
 
             Instruction::Ecall => {
@@ -275,6 +275,7 @@ mod tests {
             regs: [0; 32],
             pc: 0,
             mem: vec![0; 1024],
+            curr_pc: 0u32,
         }
     }
 
@@ -672,7 +673,7 @@ mod tests {
     #[test]
     fn test_beq_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
         cpu.execute(Instruction::Beq {
@@ -686,7 +687,7 @@ mod tests {
     #[test]
     fn test_beq_not_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
         cpu.execute(Instruction::Beq {
@@ -700,7 +701,7 @@ mod tests {
     #[test]
     fn test_bne_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
         cpu.execute(Instruction::Bne {
@@ -714,7 +715,7 @@ mod tests {
     #[test]
     fn test_blt_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = (-1i32) as u32;
         cpu.regs[2] = 1;
         cpu.execute(Instruction::Blt {
@@ -728,7 +729,7 @@ mod tests {
     #[test]
     fn test_bge_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
         cpu.execute(Instruction::Bge {
@@ -742,7 +743,7 @@ mod tests {
     #[test]
     fn test_bltu_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 1;
         cpu.regs[2] = 0xFFFFFFFF; // large unsigned
         cpu.execute(Instruction::Bltu {
@@ -756,7 +757,7 @@ mod tests {
     #[test]
     fn test_bgeu_taken() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 0xFFFFFFFF;
         cpu.regs[2] = 1;
         cpu.execute(Instruction::Bgeu {
@@ -782,7 +783,7 @@ mod tests {
     #[test]
     fn test_auipc() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.execute(Instruction::Auipc { rd: 1, imm: 0x1000 });
         assert_eq!(cpu.regs[1], 100 + 0x1000);
     }
@@ -792,7 +793,7 @@ mod tests {
     #[test]
     fn test_jal() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.execute(Instruction::Jal { rd: 1, imm: 8 });
         assert_eq!(cpu.regs[1], 104); // return address = pc + 4
         assert_eq!(cpu.pc, 108); // jumped to 100 + 8, then +4
@@ -801,14 +802,14 @@ mod tests {
     #[test]
     fn test_jalr() {
         let mut cpu = make_cpu();
-        cpu.pc = 100;
+        cpu.curr_pc = 100;
         cpu.regs[1] = 200;
         cpu.execute(Instruction::Jalr {
             rd: 2,
             rs1: 1,
             imm: 4,
         });
-        assert_eq!(cpu.regs[2], 100); // return address
+        assert_eq!(cpu.regs[2], 100 + 4); // return address
         assert_eq!(cpu.pc, 204); // jumped to 200 + 4, then +4
     }
 
