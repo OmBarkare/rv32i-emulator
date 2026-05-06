@@ -1,8 +1,8 @@
 pub struct Cpu {
     pub regs: [u32; 32],
-    pub pc: u32,
+    pub pc: u32, // stores address of instruction to be fetched, which will be executed next
     pub mem: Vec<u8>,
-    pub curr_pc: u32,
+    pub curr_pc: u32, // stores address of instruction being executed
 }
 
 impl Cpu {
