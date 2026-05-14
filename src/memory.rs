@@ -18,15 +18,19 @@ impl Memory {
         Ok(())
     }
 
-    // writes only one page at a time, for now
-    pub fn read_page(&self, addr: u32) -> Result<[&[u8; 4096]], ()>{
-        // do I keep a num here also?
-        // I cannot create a heap structure inside this function and then return it
-        // If I ask for a buffer from the user to read the data into, then I will have to trust the user to give a sufficient sized buffer to read multiple pages if I plan to keep the num parameter
-        // what should I do uuhhhh
+    // read page from memory to buffer provided by buffer
+    pub fn read_page(&self, addr: u32, buf: &mut [u8; 4096]) -> Result<(), ()>{
+        let v_addr = addr >> 12;
+
+        if let Some(page) = &self.pages[v_addr as usize] {
+            buf.copy_from_slice(&**page);
+            Ok(())
+        } else  {
+            Err(())
+        }
     }
 
-    // writes only one page at a time, for now.
+    // write page from memory to buffer provided by buffer
     pub fn write_page(&mut self, addr: u32, buf: &[u8; 4096]) -> Result<(), ()> {
         let v_addr = addr >> 12;
         self.pages[v_addr as usize] = Some( Box::new(*buf) );
