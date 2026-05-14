@@ -38,6 +38,18 @@ impl Memory {
         Ok(())
     }
 
+    pub fn write_8(&mut self, v_addr: u32, byte: u8) -> Result<(), ()> {
+        let p_addr = v_addr >> 12;
+        let p_offset = v_addr & 0xFFF;
+
+        if let Some(page) = &mut self.pages[p_addr as usize] {
+            page[p_offset as usize] = byte;
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     // write half word as little endian
     pub fn write_16(&mut self, v_addr: u32, hword: u16) -> Result<(), ()> {
         let p_addr = v_addr >> 12;
@@ -63,6 +75,18 @@ impl Memory {
             page[p_offset as usize + 2] = (word >> 16) as u8;
             page[p_offset as usize + 3] = (word >> 24) as u8;
             Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    
+    pub fn read_8(&self, v_addr: u32) -> Result<u8, ()> {
+        let p_addr = v_addr >> 12;
+        let p_offset = v_addr & 0xFFF;
+
+        if let Some(page) = &self.pages[p_addr as usize] {
+            Ok(page[p_offset as usize])
         } else {
             Err(())
         }
