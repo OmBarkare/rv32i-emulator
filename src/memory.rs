@@ -18,18 +18,6 @@ impl Memory {
         Ok(())
     }
 
-    // read page from memory to buffer provided by buffer
-    pub fn read_page(&self, v_addr: u32, buf: &mut [u8; 4096]) -> Result<(), ()>{
-        let p_addr = v_addr >> 12;
-
-        if let Some(page) = &self.pages[p_addr as usize] {
-            buf.copy_from_slice(&**page);
-            Ok(())
-        } else  {
-            Err(())
-        }
-    }
-
     // write page from memory to buffer provided by buffer
     pub fn write_page(&mut self, v_addr: u32, buf: &[u8; 4096]) -> Result<(), ()> {
         let p_addr = v_addr >> 12;
@@ -76,6 +64,18 @@ impl Memory {
             page[p_offset as usize + 3] = (word >> 24) as u8;
             Ok(())
         } else {
+            Err(())
+        }
+    }
+
+    // read page from memory to buffer provided by buffer
+    pub fn read_page(&self, v_addr: u32, buf: &mut [u8; 4096]) -> Result<(), ()>{
+        let p_addr = v_addr >> 12;
+
+        if let Some(page) = &self.pages[p_addr as usize] {
+            buf.copy_from_slice(&**page);
+            Ok(())
+        } else  {
             Err(())
         }
     }
