@@ -1,7 +1,8 @@
+use crate::memory::Memory;
 pub struct Cpu {
     pub regs: [u32; 32],
     pub pc: u32, // stores address of instruction to be fetched, which will be executed next
-    pub mem: Vec<u8>,
+    pub mem: Memory,
     pub curr_pc: u32, // stores address of instruction being executed
 }
 
@@ -10,14 +11,14 @@ impl Cpu {
         Cpu {
             regs: [0u32; 32],
             pc: 0u32,
-            mem: vec![0u8; 4096],
+            mem: Memory::new(),
             curr_pc: 0u32,
         }
     }
 
     pub fn load_binary(&mut self, binary: &[u8]) {
         for (i, byte) in binary.iter().enumerate() {
-            self.mem[i] = *byte;
+            self.mem.write_8(i as u32, *byte).unwrap();
         }
     }
 
