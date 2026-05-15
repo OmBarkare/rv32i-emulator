@@ -98,45 +98,41 @@ impl Cpu {
 
             // I-type loads
             Instruction::Lw { rd, rs1, imm } => {
-                // convert to u32 first because we dont want sign extension
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let addr  = (self.regs[rs1 as usize] as i32 + imm) as u32;
                 self.regs[rd as usize] = 0;
-                // little-endian format, most significant byte in higher address
-                self.regs[rd as usize] |= self.mem[addr] as u32;
-                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
-                self.regs[rd as usize] |= (self.mem[addr + 2] as u32) << 16;
-                self.regs[rd as usize] |= (self.mem[addr + 3] as u32) << 24;
+
+                self.regs[rd as usize] = self.mem.read_32(addr).unwrap();
             }
 
             Instruction::Lh { rd, rs1, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                self.regs[rd as usize] = 0;
+                let addr= (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.regs[rd as usize] |= self.mem[addr] as u32;
-                self.regs[rd as usize] |= ((self.mem[addr + 1] as i8 as i32) << 8) as u32;
+                // loading half word does not preserve any higher bits, so we can
+                // assing directly
+                // casting for sign extension
+                self.regs[rd as usize] = self.mem.read_16(addr).unwrap() as i16 as i32 as u32;
             }
 
             Instruction::Lb { rd, rs1, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
                 self.regs[rd as usize] = 0;
 
-                // i32 extends the sign, then cast back to u32 to store
-                self.regs[rd as usize] = (self.mem[addr] as i8) as i32 as u32;
+                // i32 extends the sign, then cast back to u32 to load
+                self.regs[rd as usize] = (self.mem.read_8(addr).unwrap() as i8) as i32 as u32;
             }
 
             Instruction::Lbu { rd, rs1, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
                 self.regs[rd as usize] = 0;
 
-                self.regs[rd as usize] = self.mem[addr] as u32;
+                self.regs[rd as usize] = self.mem.read_8(addr).unwrap() as u32;
             }
 
             Instruction::Lhu { rd, rs1, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
                 self.regs[rd as usize] = 0;
 
-                self.regs[rd as usize] |= self.mem[addr] as u32;
-                self.regs[rd as usize] |= (self.mem[addr + 1] as u32) << 8;
+                self.regs[rd as usize] = self.mem.read_16(addr).unwrap() as u32;
             }
 
             // I-type Jump
@@ -148,32 +144,21 @@ impl Cpu {
 
             // S-type
             Instruction::Sw { rs1, rs2, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
-                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
-                let b_2 = ((self.regs[rs2 as usize] & 0xFF0000) >> 16) as u8;
-                let b_3 = ((self.regs[rs2 as usize] & 0xFF000000) >> 24) as u8;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.mem[addr as usize] = b_0;
-                self.mem[addr as usize + 1] = b_1;
-                self.mem[addr as usize + 2] = b_2;
-                self.mem[addr as usize + 3] = b_3;
+                self.mem.write_32(addr, self.regs[rs2 as usize]).unwrap();
             }
 
             Instruction::Sh { rs1, rs2, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
-                let b_1 = ((self.regs[rs2 as usize] & 0xFF00) >> 8) as u8;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.mem[addr as usize] = b_0;
-                self.mem[addr as usize + 1] = b_1;
+                self.mem.write_16(addr, self.regs[rs2 as usize] as u16).unwrap();
             }
 
             Instruction::Sb { rs1, rs2, imm } => {
-                let addr: usize = (self.regs[rs1 as usize] as i32 + imm) as u32 as usize;
-                let b_0 = (self.regs[rs2 as usize] & 0xFF) as u8;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.mem[addr as usize] = b_0;
+                self.mem.write_8(addr, self.regs[rs2 as usize] as u8).unwrap();
             }
 
             // B-type instructions
@@ -270,20 +255,11 @@ impl Cpu {
 mod tests {
     use super::*;
 
-    fn make_cpu() -> Cpu {
-        Cpu {
-            regs: [0; 32],
-            pc: 0,
-            mem: vec![0; 1024],
-            curr_pc: 0u32,
-        }
-    }
-
     // ---- R-type ----
 
     #[test]
     fn test_add() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 10;
         cpu.regs[2] = 20;
         cpu.execute(Instruction::Add {
@@ -296,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_sub() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 20;
         cpu.regs[2] = 10;
         cpu.execute(Instruction::Sub {
@@ -309,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_sll() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 1;
         cpu.regs[2] = 4;
         cpu.execute(Instruction::Sll {
@@ -322,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_srl() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 16;
         cpu.regs[2] = 4;
         cpu.execute(Instruction::Srl {
@@ -335,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_sra_negative() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = (-16i32) as u32;
         cpu.regs[2] = 2;
         cpu.execute(Instruction::Sra {
@@ -348,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_slt_true() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = (-1i32) as u32;
         cpu.regs[2] = 1;
         cpu.execute(Instruction::Slt {
@@ -361,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_slt_false() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 1;
         cpu.regs[2] = (-1i32) as u32;
         cpu.execute(Instruction::Slt {
@@ -374,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_sltu() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 1;
         cpu.regs[2] = 0xFFFFFFFF; // large unsigned, but -1 signed
         cpu.execute(Instruction::Sltu {
@@ -387,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_and() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
         cpu.execute(Instruction::And {
@@ -400,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_or() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
         cpu.execute(Instruction::Or {
@@ -413,7 +389,7 @@ mod tests {
 
     #[test]
     fn test_xor() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.regs[2] = 0b1010;
         cpu.execute(Instruction::Xor {
@@ -428,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_addi_positive() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 10;
         cpu.execute(Instruction::Addi {
             rd: 2,
@@ -440,7 +416,7 @@ mod tests {
 
     #[test]
     fn test_addi_negative_imm() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 10;
         cpu.execute(Instruction::Addi {
             rd: 2,
@@ -453,7 +429,7 @@ mod tests {
     #[test]
     fn test_addi_nop() {
         // NOP = ADDI x0, x0, 0 — x0 must always stay 0
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.execute(Instruction::Addi {
             rd: 0,
             rs1: 0,
@@ -464,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_slti_true() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = (-5i32) as u32;
         cpu.execute(Instruction::Slti {
             rd: 2,
@@ -476,7 +452,7 @@ mod tests {
 
     #[test]
     fn test_sltiu() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 4;
         cpu.execute(Instruction::Sltiu {
             rd: 2,
@@ -488,7 +464,7 @@ mod tests {
 
     #[test]
     fn test_xori() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.execute(Instruction::Xori {
             rd: 2,
@@ -500,7 +476,7 @@ mod tests {
 
     #[test]
     fn test_ori() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.execute(Instruction::Ori {
             rd: 2,
@@ -512,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_andi() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 0b1100;
         cpu.execute(Instruction::Andi {
             rd: 2,
@@ -524,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_slli() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 1;
         cpu.execute(Instruction::Slli {
             rd: 2,
@@ -536,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_srli() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = 16;
         cpu.execute(Instruction::Srli {
             rd: 2,
@@ -548,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_srai_negative() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.regs[1] = (-8i32) as u32;
         cpu.execute(Instruction::Srai {
             rd: 2,
@@ -562,7 +538,8 @@ mod tests {
 
     #[test]
     fn test_sw_lw_roundtrip() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100; // base address
         cpu.regs[2] = 0xDEADBEEF;
         cpu.execute(Instruction::Sw {
@@ -580,7 +557,8 @@ mod tests {
 
     #[test]
     fn test_sb_lb_roundtrip() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0xFF; // -1 as i8
         cpu.execute(Instruction::Sb {
@@ -598,7 +576,8 @@ mod tests {
 
     #[test]
     fn test_sb_lbu_no_sign_extend() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0xFF;
         cpu.execute(Instruction::Sb {
@@ -616,7 +595,8 @@ mod tests {
 
     #[test]
     fn test_sh_lh_roundtrip() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x8000; // negative as i16
         cpu.execute(Instruction::Sh {
@@ -634,7 +614,8 @@ mod tests {
 
     #[test]
     fn test_sh_lhu_no_sign_extend() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x8000;
         cpu.execute(Instruction::Sh {
@@ -652,7 +633,8 @@ mod tests {
 
     #[test]
     fn test_load_store_with_offset() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
+        cpu.mem.allocate_page(0, 1).unwrap();
         cpu.regs[1] = 100;
         cpu.regs[2] = 0x12345678;
         cpu.execute(Instruction::Sw {
@@ -672,7 +654,7 @@ mod tests {
 
     #[test]
     fn test_beq_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
@@ -686,8 +668,9 @@ mod tests {
 
     #[test]
     fn test_beq_not_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
+        cpu.pc = 104; // pc incremented by fetch unit before it reaches execute
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
         cpu.execute(Instruction::Beq {
@@ -695,12 +678,12 @@ mod tests {
             rs2: 2,
             imm: 8,
         });
-        assert_eq!(cpu.pc, 104); // not taken, normal increment
+        assert_eq!(cpu.pc, 104); // PC is updated by fetch unit, so will stay same if branch not taken
     }
 
     #[test]
     fn test_bne_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 6;
@@ -714,7 +697,7 @@ mod tests {
 
     #[test]
     fn test_blt_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = (-1i32) as u32;
         cpu.regs[2] = 1;
@@ -728,7 +711,7 @@ mod tests {
 
     #[test]
     fn test_bge_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 5;
         cpu.regs[2] = 5;
@@ -742,7 +725,7 @@ mod tests {
 
     #[test]
     fn test_bltu_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 1;
         cpu.regs[2] = 0xFFFFFFFF; // large unsigned
@@ -756,7 +739,7 @@ mod tests {
 
     #[test]
     fn test_bgeu_taken() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 0xFFFFFFFF;
         cpu.regs[2] = 1;
@@ -772,7 +755,7 @@ mod tests {
 
     #[test]
     fn test_lui() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.execute(Instruction::Lui {
             rd: 1,
             imm: 0x12345000u32 as i32,
@@ -782,7 +765,7 @@ mod tests {
 
     #[test]
     fn test_auipc() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.execute(Instruction::Auipc { rd: 1, imm: 0x1000 });
         assert_eq!(cpu.regs[1], 100 + 0x1000);
@@ -792,7 +775,7 @@ mod tests {
 
     #[test]
     fn test_jal() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.execute(Instruction::Jal { rd: 1, imm: 8 });
         assert_eq!(cpu.regs[1], 104); // return address = pc + 4
@@ -801,7 +784,7 @@ mod tests {
 
     #[test]
     fn test_jalr() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.curr_pc = 100;
         cpu.regs[1] = 200;
         cpu.execute(Instruction::Jalr {
@@ -817,7 +800,7 @@ mod tests {
 
     #[test]
     fn test_x0_always_zero() {
-        let mut cpu = make_cpu();
+        let mut cpu = Cpu::new();
         cpu.execute(Instruction::Addi {
             rd: 0,
             rs1: 0,
