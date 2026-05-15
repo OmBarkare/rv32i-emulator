@@ -3,6 +3,7 @@ mod decoder;
 mod executor;
 mod instructions;
 mod fetcher;
+mod memory;
 
 use std::{fs::File, io::Read};
 use cpu::Cpu;
