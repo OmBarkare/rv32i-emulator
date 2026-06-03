@@ -81,14 +81,26 @@ impl Memory {
         let p_addr = v_addr >> 12;
         let p_offset = v_addr & 0xFFF;
 
-        if let Some(page) = &mut self.pages[p_addr as usize] {
-            page[p_offset as usize] = word as u8;
-            page[p_offset as usize + 1] = (word >> 8) as u8;
-            page[p_offset as usize + 2] = (word >> 16) as u8;
-            page[p_offset as usize + 3] = (word >> 24) as u8;
-            Ok(())
-        } else {
-            Err(())
+        match &mut self.pages[p_addr as usize] {
+            Some(page) => {
+                page[p_offset as usize] = word as u8;
+                page[p_offset as usize + 1] = (word >> 8) as u8;
+                page[p_offset as usize + 2] = (word >> 16) as u8;
+                page[p_offset as usize + 3] = (word >> 24) as u8;
+                Ok(())
+            }
+            None => {
+                self.allocate_page(v_addr, 1).unwrap();
+                if let Some(page) = &mut self.pages[p_addr as usize] {
+                    page[p_offset as usize] = word as u8;
+                    page[p_offset as usize + 1] = (word >> 8) as u8;
+                    page[p_offset as usize + 2] = (word >> 16) as u8;
+                    page[p_offset as usize + 3] = (word >> 24) as u8;
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 

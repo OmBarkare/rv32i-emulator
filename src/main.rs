@@ -1,15 +1,14 @@
 mod cpu;
 mod decoder;
 mod executor;
-mod instructions;
 mod fetcher;
+mod instructions;
 mod memory;
 
-use std::{fs::File, io::Read};
 use cpu::Cpu;
+use std::{fs::File, io::Read};
 
 fn main() {
-    
     let mut cpu = Cpu::new();
     let mut file = File::open("/home/om/omomo/projects/rv32i-emulator/tests/binary").unwrap();
     let mut binary: Vec<u8> = Vec::new();
@@ -26,12 +25,13 @@ fn main() {
             break;
         }
 
+        println!("inst_hex: 0X{:X}", &raw_inst.bits);
         let inst = cpu.decode(raw_inst);
 
         println!("{:#?}", inst);
 
         cpu.execute(inst);
 
-        println!("PC: {:X}", cpu.pc);
+        println!("PC: 0X{:X}", cpu.pc);
     }
 }
