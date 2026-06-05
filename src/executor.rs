@@ -142,6 +142,36 @@ impl Cpu {
                 self.pc = dest_addr;
             }
 
+            // I-type CSR
+            Instruction::Csrrw { csr, rs1, rd } => {
+                let new_csr_val = self.regs[rs1 as usize];
+                let csr_reg = self.get_csr(csr).unwrap();
+                // reading only if rd is not r0 to avoid read side effects
+                let old_csr_val: Option<u32> = if rd != 0 { Some(*csr_reg) } else { None };
+                *csr_reg = new_csr_val;
+                if let Some(val) = old_csr_val {
+                    self.regs[rd as usize] = val;
+                }
+            }
+            Instruction::Csrrs { csr, rs1, rd } => {
+                let new_csr_val = self.regs[rs1 as usize];
+                let csr_reg = self.get_csr(csr).unwrap();
+                let old_csr_val = *csr_reg;
+                if rs1 != 0 {
+                    *csr_reg |= new_csr_val;
+                }
+                self.regs[rd as usize] = old_csr_val;
+            }
+            Instruction::Csrrc { csr, rs1, rd } => {
+                let new_csr_val = self.regs[rs1 as usize];
+                let csr_reg = self.get_csr(csr).unwrap();
+                let old_csr_val = *csr_reg;
+                if rs1 != 0 {
+                    *csr_reg &= !new_csr_val;
+                }
+                self.regs[rd as usize] = old_csr_val;
+            }
+
             // S-type
             Instruction::Sw { rs1, rs2, imm } => {
                 let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
@@ -229,6 +259,9 @@ impl Cpu {
                 self.pc = (self.curr_pc as i32 + imm) as u32;
             }
 
+            // REVIEW: ecall has different cause codes when
+            // called from different privilege modes.
+            // 11 is when it returns from M-mode.
             Instruction::Ecall => {
                 self.trap(11);
             }
