@@ -137,6 +137,38 @@ impl Cpu {
                 imm: imm_i,
             },
 
+            // I-type CSR
+            (0b1110011, 0b001, _) => Instruction::Csrrw {
+                csr: (imm_i & 0xFFF) as u16,
+                rs1,
+                rd,
+            },
+            (0b1110011, 0b010, _) => Instruction::Csrrs {
+                csr: (imm_i & 0xFFF) as u16,
+                rs1,
+                rd,
+            },
+            (0b1110011, 0b011, _) => Instruction::Csrrc {
+                csr: (imm_i & 0xFFF) as u16,
+                rs1,
+                rd,
+            },
+            (0b1110011, 0b101, _) => Instruction::Csrrwi {
+                csr: (imm_i & 0xFFF) as u16,
+                uimm: rs1,
+                rd,
+            },
+            (0b1110011, 0b110, _) => Instruction::Csrrci {
+                csr: (imm_i & 0xFFF) as u16,
+                uimm: rs1,
+                rd,
+            },
+            (0b1110011, 0b111, _) => Instruction::Csrrsi {
+                csr: (imm_i & 0xFFF) as u16,
+                uimm: rs1,
+                rd,
+            },
+
             // S-type
             (0b0100011, 0b010, _) => Instruction::Sw {
                 rs1,

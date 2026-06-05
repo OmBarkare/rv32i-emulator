@@ -98,14 +98,14 @@ impl Cpu {
 
             // I-type loads
             Instruction::Lw { rd, rs1, imm } => {
-                let addr  = (self.regs[rs1 as usize] as i32 + imm) as u32;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
                 self.regs[rd as usize] = 0;
 
                 self.regs[rd as usize] = self.mem.read_32(addr).unwrap();
             }
 
             Instruction::Lh { rd, rs1, imm } => {
-                let addr= (self.regs[rs1 as usize] as i32 + imm) as u32;
+                let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
                 // loading half word does not preserve any higher bits, so we can
                 // assing directly
@@ -152,13 +152,17 @@ impl Cpu {
             Instruction::Sh { rs1, rs2, imm } => {
                 let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.mem.write_16(addr, self.regs[rs2 as usize] as u16).unwrap();
+                self.mem
+                    .write_16(addr, self.regs[rs2 as usize] as u16)
+                    .unwrap();
             }
 
             Instruction::Sb { rs1, rs2, imm } => {
                 let addr = (self.regs[rs1 as usize] as i32 + imm) as u32;
 
-                self.mem.write_8(addr, self.regs[rs2 as usize] as u8).unwrap();
+                self.mem
+                    .write_8(addr, self.regs[rs2 as usize] as u8)
+                    .unwrap();
             }
 
             // B-type instructions
@@ -226,15 +230,11 @@ impl Cpu {
             }
 
             Instruction::Ecall => {
-                println!(
-                    "Ah.. parley! The code requests an audience with an operating system! whats that? no OS? well then, we're of the edge of the map, mate. Abondoning ship! savyy?"
-                );
-                panic!("captains dont abandon their ship!");
+                self.trap(11);
             }
 
             Instruction::Ebreak => {
-                println!("Haltt!! wait until they figure out where all the rums gone!");
-                panic!("rum not found");
+                self.trap(3);
             }
 
             Instruction::Fence => {
