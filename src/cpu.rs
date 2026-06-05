@@ -54,5 +54,13 @@ impl Cpu {
             println!("x{:<2}: 0X{:0>8X}", i, self.regs[i]);
         }
     }
+
+    // TODO
+    // save state to csr, update PC to mvec
+    pub fn trap(&mut self, cause: u32) {
+        self.csrs.mcause = cause;
+        self.csrs.mepc = self.pc;
+        self.pc = self.csrs.mtvec;
+    }
 }
 
