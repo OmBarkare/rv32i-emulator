@@ -54,6 +54,12 @@ pub enum Instruction {
     // System
     Ecall,
     Ebreak,
+    Csrrw { csr: u16, rs1: u8, rd: u8 },
+    Csrrs { csr: u16, rs1: u8, rd: u8 },
+    Csrrc { csr: u16, rs1: u8, rd: u8 },
+    Csrrwi { csr: u16, uimm: u8, rd: u8 },
+    Csrrsi { csr: u16, uimm: u8, rd: u8 },
+    Csrrci { csr: u16, uimm: u8, rd: u8 },
 
     // Fence
     Fence,
