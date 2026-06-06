@@ -171,6 +171,31 @@ impl Cpu {
                 }
                 self.regs[rd as usize] = old_csr_val;
             }
+            Instruction::Csrrwi { csr, uimm, rd } => {
+                let csr_reg = self.get_csr(csr).unwrap();
+                // reading only if rd is not r0 to avoid read side effects
+                let old_csr_val: Option<u32> = if rd != 0 { Some(*csr_reg) } else { None };
+                *csr_reg = uimm as u32;
+                if let Some(val) = old_csr_val {
+                    self.regs[rd as usize] = val;
+                }
+            }
+            Instruction::Csrrsi { csr, uimm, rd } => {
+                let csr_reg = self.get_csr(csr).unwrap();
+                let old_csr_val = *csr_reg;
+                if uimm != 0 {
+                    *csr_reg |= uimm as u32;
+                }
+                self.regs[rd as usize] = old_csr_val;
+            }
+            Instruction::Csrrci { csr, uimm, rd } => {
+                let csr_reg = self.get_csr(csr).unwrap();
+                let old_csr_val = *csr_reg;
+                if uimm != 0 {
+                    *csr_reg &= !(uimm as u32);
+                }
+                self.regs[rd as usize] = old_csr_val;
+            }
 
             // S-type
             Instruction::Sw { rs1, rs2, imm } => {
