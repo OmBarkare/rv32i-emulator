@@ -158,12 +158,12 @@ impl Cpu {
                 uimm: rs1,
                 rd,
             },
-            (0b1110011, 0b110, _) => Instruction::Csrrci {
+            (0b1110011, 0b110, _) => Instruction::Csrrsi {
                 csr: (imm_i & 0xFFF) as u16,
                 uimm: rs1,
                 rd,
             },
-            (0b1110011, 0b111, _) => Instruction::Csrrsi {
+            (0b1110011, 0b111, _) => Instruction::Csrrci {
                 csr: (imm_i & 0xFFF) as u16,
                 uimm: rs1,
                 rd,
@@ -234,6 +234,7 @@ impl Cpu {
                 match imm12 {
                     0x000 => Instruction::Ecall,
                     0x001 => Instruction::Ebreak,
+                    0x0302 => Instruction::Mret,
                     _ => Instruction::Illegal,
                 }
             }
