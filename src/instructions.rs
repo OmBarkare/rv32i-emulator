@@ -54,6 +54,7 @@ pub enum Instruction {
     // System
     Ecall,
     Ebreak,
+    Mret,
     Csrrw { csr: u16, rs1: u8, rd: u8 },
     Csrrs { csr: u16, rs1: u8, rd: u8 },
     Csrrc { csr: u16, rs1: u8, rd: u8 },
