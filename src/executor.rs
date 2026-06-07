@@ -6,24 +6,28 @@ impl Cpu {
         match inst {
             // R-type
             Instruction::Add { rd, rs1, rs2 } => {
-                self.regs[rd as usize] = self.regs[rs1 as usize] + self.regs[rs2 as usize];
+                self.regs[rd as usize] =
+                    self.regs[rs1 as usize].wrapping_add(self.regs[rs2 as usize]);
             }
 
             Instruction::Sub { rd, rs1, rs2 } => {
-                self.regs[rd as usize] = self.regs[rs1 as usize] - self.regs[rs2 as usize];
+                self.regs[rd as usize] =
+                    self.regs[rs1 as usize].wrapping_sub(self.regs[rs2 as usize]);
             }
 
             Instruction::Sll { rd, rs1, rs2 } => {
-                self.regs[rd as usize] = self.regs[rs1 as usize] << self.regs[rs2 as usize];
+                self.regs[rd as usize] =
+                    self.regs[rs1 as usize].wrapping_shl(self.regs[rs2 as usize]);
             }
 
             Instruction::Srl { rd, rs1, rs2 } => {
-                self.regs[rd as usize] = self.regs[rs1 as usize] >> self.regs[rs2 as usize];
+                self.regs[rd as usize] =
+                    self.regs[rs1 as usize].wrapping_shr(self.regs[rs2 as usize]);
             }
 
             Instruction::Sra { rd, rs1, rs2 } => {
                 self.regs[rd as usize] =
-                    (self.regs[rs1 as usize] as i32 >> self.regs[rs2 as usize]) as u32;
+                    (self.regs[rs1 as usize] as i32).wrapping_shr(self.regs[rs2 as usize]) as u32;
             }
 
             Instruction::Slt { rd, rs1, rs2 } => {
@@ -55,7 +59,7 @@ impl Cpu {
             // I-type arithmetic
             // NOP is encoded as Addi x0, x0, 0
             Instruction::Addi { rd, rs1, imm } => {
-                self.regs[rd as usize] = ((self.regs[rs1 as usize] as i32) + imm) as u32;
+                self.regs[rd as usize] = self.regs[rs1 as usize].wrapping_add(imm as u32)
             }
 
             Instruction::Slti { rd, rs1, imm } => {
