@@ -299,6 +299,10 @@ impl Cpu {
                 self.trap(3);
             }
 
+            Instruction::Mret => {
+                self.pc = self.csrs.mepc + 4;
+            }
+
             Instruction::Fence => {
                 println!("fence")
             }
@@ -869,5 +873,660 @@ mod tests {
             imm: 42,
         });
         assert_eq!(cpu.regs[0], 0); // x0 must never change
+    }
+
+    #[test]
+    fn test_csrrw_store() {
+        let mut cpu = Cpu::new();
+        cpu.regs[8] = 0xABCD1234;
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 8,
+            rd: 0,
+        });
+        assert_eq!(cpu.csrs.mscratch, 0xABCD1234);
+    }
+}
+
+#[cfg(test)]
+mod csr_tests {
+    use super::*;
+    use crate::cpu::Cpu;
+    use crate::instructions::Instruction;
+
+    // =========================================================================
+    // CSRRW tests
+    // =========================================================================
+    // CSRRW: rd = old CSR value, CSR = rs1
+    // The OLD value must be returned in rd BEFORE the CSR is modified.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrw_writes_csr() {
+        // Basic write: does the CSR get the value from rs1?
+        let mut cpu = Cpu::new();
+        cpu.regs[5] = 0xABCD1234; // t0 = 0xABCD1234
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340, // mscratch
+            rs1: 5,
+            rd: 0, // discard old value (rd=x0)
+        });
+        assert_eq!(
+            cpu.csrs.mscratch, 0xABCD1234,
+            "CSRRW must write rs1 into CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrw_returns_old_value() {
+        // CSRRW must return the OLD value of the CSR into rd,
+        // not the new value, and not zero.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x11111111; // pre-load CSR with a known value
+        cpu.regs[5] = 0x22222222; // new value to write
+
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 5,
+            rd: 6, // rd = t1, should receive OLD value
+        });
+
+        assert_eq!(
+            cpu.regs[6], 0x11111111,
+            "CSRRW rd must hold the OLD CSR value"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0x22222222,
+            "CSRRW must write new value to CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrw_rd_zero_no_read() {
+        // When rd = x0, the spec says the CSR read can be skipped
+        // (no side effects from reading). For mscratch this doesn't matter,
+        // but the write must still happen.
+        let mut cpu = Cpu::new();
+        cpu.regs[5] = 0xDEADBEEF;
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0, // x0 — discard old value
+        });
+        assert_eq!(
+            cpu.csrs.mscratch, 0xDEADBEEF,
+            "CSRRW with rd=x0 must still write CSR"
+        );
+        assert_eq!(cpu.regs[0], 0, "x0 must stay 0 even as CSRRW rd");
+    }
+
+    // This is the exact sequence from section 8 of the binary:
+    // csrw mscratch, t0   (t0 = 0xABCD1234)
+    // csrr t1, mscratch
+    // bne  t0, t1, _fail
+    #[test]
+    fn test_csrrw_then_csrrs_read_back() {
+        // csrw = csrrw x0, csr, rs1
+        // csrr = csrrs rd, csr, x0  (rs1=x0 means no bits set, pure read)
+        let mut cpu = Cpu::new();
+        cpu.regs[5] = 0xABCD1234; // t0
+
+        // csrw mscratch, t0
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0,
+        });
+
+        // csrr t1, mscratch  (implemented as csrrs with rs1=x0)
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0, // x0 — set no bits, pure read
+            rd: 6,  // t1
+        });
+
+        assert_eq!(
+            cpu.regs[6], 0xABCD1234,
+            "csrr (csrrs x0) must read back written value"
+        );
+    }
+
+    // =========================================================================
+    // CSRRS tests
+    // =========================================================================
+    // CSRRS: rd = old CSR value, CSR = CSR | rs1
+    // Bits that are 1 in rs1 get SET in the CSR.
+    // Bits that are 0 in rs1 are unchanged.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrs_sets_bits() {
+        // Start with 0x000000FF, set upper bits with 0xFFFFFF00
+        // Result should be 0xFFFFFFFF
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x000000FF;
+        cpu.regs[6] = 0xFFFFFF00; // t1 = bits to set
+
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7, // t2 = old value
+        });
+
+        assert_eq!(
+            cpu.regs[7], 0x000000FF,
+            "CSRRS rd must hold OLD value (before set)"
+        );
+        assert_eq!(cpu.csrs.mscratch, 0xFFFFFFFF, "CSRRS must OR rs1 into CSR");
+    }
+
+    #[test]
+    fn test_csrrs_does_not_clear_bits() {
+        // CSRRS only sets bits, never clears them.
+        // rs1 = 0x0F: only bits 3:0 should change (get set if not already).
+        // All other bits must remain as they were.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xF0F0F0F0;
+        cpu.regs[5] = 0x0F0F0F0F;
+
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 0xFFFFFFFF,
+            "CSRRS must set bits without clearing others"
+        );
+    }
+
+    #[test]
+    fn test_csrrs_rs1_zero_is_pure_read() {
+        // When rs1 = x0, CSRRS reads without modifying.
+        // This is the "csrr" pseudo-instruction.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x12345678;
+
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0, // x0 — no bits to set
+            rd: 5,
+        });
+
+        assert_eq!(
+            cpu.regs[5], 0x12345678,
+            "CSRRS with rs1=x0 must read CSR unchanged"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0x12345678,
+            "CSRRS with rs1=x0 must not modify CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrs_returns_old_value_before_set() {
+        // This is the most critical CSRRS invariant:
+        // rd gets the value BEFORE the OR operation, not after.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x000000FF;
+        cpu.regs[6] = 0xFFFFFF00;
+
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7,
+        });
+
+        // rd must be the PRE-modification value
+        assert_eq!(
+            cpu.regs[7], 0x000000FF,
+            "CSRRS must return OLD value (0xFF), not new value (0xFFFFFFFF)"
+        );
+    }
+
+    // =========================================================================
+    // CSRRC tests
+    // =========================================================================
+    // CSRRC: rd = old CSR value, CSR = CSR & ~rs1
+    // Bits that are 1 in rs1 get CLEARED in the CSR.
+    // Bits that are 0 in rs1 are unchanged.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrc_clears_bits() {
+        // Start with 0xFFFFFFFF, clear bits 0x0F0F0F0F
+        // Result should be 0xF0F0F0F0
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xFFFFFFFF;
+        cpu.regs[6] = 0x0F0F0F0F; // bits to clear
+
+        cpu.execute(Instruction::Csrrc {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7, // t2 = old value
+        });
+
+        assert_eq!(
+            cpu.regs[7], 0xFFFFFFFF,
+            "CSRRC rd must hold OLD value (before clear)"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0xF0F0F0F0,
+            "CSRRC must AND ~rs1 into CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrc_does_not_set_bits() {
+        // CSRRC only clears bits, never sets them.
+        // Bits that are 0 in rs1 must be unchanged in the CSR.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x00000000;
+        cpu.regs[5] = 0xFFFFFFFF;
+
+        cpu.execute(Instruction::Csrrc {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 0x00000000,
+            "CSRRC on zero CSR must stay zero"
+        );
+    }
+
+    #[test]
+    fn test_csrrc_returns_old_value_before_clear() {
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xFFFFFFFF;
+        cpu.regs[6] = 0x0F0F0F0F;
+
+        cpu.execute(Instruction::Csrrc {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7,
+        });
+
+        assert_eq!(
+            cpu.regs[7], 0xFFFFFFFF,
+            "CSRRC must return OLD value (0xFFFFFFFF), not new value (0xF0F0F0F0)"
+        );
+    }
+
+    #[test]
+    fn test_csrrc_rs1_zero_is_pure_read() {
+        // When rs1 = x0, CSRRC reads without modifying (no bits to clear).
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xDEADBEEF;
+
+        cpu.execute(Instruction::Csrrc {
+            csr: 0x340,
+            rs1: 0,
+            rd: 5,
+        });
+
+        assert_eq!(
+            cpu.regs[5], 0xDEADBEEF,
+            "CSRRC with rs1=x0 must read CSR unchanged"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0xDEADBEEF,
+            "CSRRC with rs1=x0 must not modify CSR"
+        );
+    }
+
+    // =========================================================================
+    // CSRRWI tests
+    // =========================================================================
+    // CSRRWI: rd = old CSR value, CSR = zero_extend(uimm5)
+    // The immediate is 5-bit ZERO-extended. Range: 0-31. Never negative.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrwi_writes_immediate() {
+        // csrrwi with imm=0 → CSR must become 0
+        // (This is the first CSRRWI test in section 8)
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xF0F0F0F0; // pre-load so we can verify overwrite
+
+        cpu.execute(Instruction::Csrrwi {
+            csr: 0x340,
+            uimm: 0,
+            rd: 7, // capture old value
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 0,
+            "CSRRWI with imm=0 must write 0 to CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrwi_writes_max_immediate() {
+        // Max 5-bit immediate = 31 = 0b11111
+        let mut cpu = Cpu::new();
+
+        cpu.execute(Instruction::Csrrwi {
+            csr: 0x340,
+            uimm: 31,
+            rd: 0,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 31,
+            "CSRRWI with imm=31 must write 31 to CSR"
+        );
+    }
+
+    #[test]
+    fn test_csrrwi_immediate_is_zero_extended() {
+        // The immediate is ZERO-extended, not sign-extended.
+        // Max value is 31 (5 bits). Bit 4 being set does NOT mean negative.
+        // After CSRRWI with imm=31, CSR must be 0x0000001F, not 0xFFFFFFFF.
+        let mut cpu = Cpu::new();
+
+        cpu.execute(Instruction::Csrrwi {
+            csr: 0x340,
+            uimm: 31, // 0b11111 — if sign-extended = -1 = 0xFFFFFFFF (wrong)
+            rd: 0,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 0x0000001F,
+            "CSRRWI immediate must be ZERO-extended, not sign-extended. Expected 31, not 0xFFFFFFFF"
+        );
+    }
+
+    #[test]
+    fn test_csrrwi_returns_old_value() {
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xABCDEF00;
+
+        cpu.execute(Instruction::Csrrwi {
+            csr: 0x340,
+            uimm: 5,
+            rd: 6,
+        });
+
+        assert_eq!(
+            cpu.regs[6], 0xABCDEF00,
+            "CSRRWI must return OLD CSR value in rd"
+        );
+        assert_eq!(cpu.csrs.mscratch, 5, "CSRRWI must write immediate to CSR");
+    }
+
+    // =========================================================================
+    // CSRRSI tests
+    // =========================================================================
+    // CSRRSI: rd = old CSR value, CSR = CSR | zero_extend(uimm5)
+    // Sets bits indicated by the 5-bit zero-extended immediate.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrsi_sets_bits() {
+        // Section 8 sequence: CSR was just written to 0 by CSRRWI,
+        // then CSRRSI with imm=31 sets bits 4:0 → CSR = 31
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0;
+
+        cpu.execute(Instruction::Csrrsi {
+            csr: 0x340,
+            uimm: 31, // set bits 4:0
+            rd: 7,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 31,
+            "CSRRSI with imm=31 must set bits 4:0"
+        );
+    }
+
+    #[test]
+    fn test_csrrsi_does_not_clear_bits() {
+        // CSRRSI only sets bits indicated by uimm, never clears others.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xFFFFFF00; // upper bits already set
+
+        cpu.execute(Instruction::Csrrsi {
+            csr: 0x340,
+            uimm: 31, // set bits 4:0, upper bits must stay
+            rd: 0,
+        });
+
+        assert_eq!(
+            cpu.csrs.mscratch, 0xFFFFFF1F,
+            "CSRRSI must not clear existing bits"
+        );
+    }
+
+    #[test]
+    fn test_csrrsi_returns_old_value() {
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0;
+
+        cpu.execute(Instruction::Csrrsi {
+            csr: 0x340,
+            uimm: 31,
+            rd: 7,
+        });
+
+        assert_eq!(
+            cpu.regs[7], 0,
+            "CSRRSI rd must hold OLD value (0), not new value (31)"
+        );
+    }
+
+    #[test]
+    fn test_csrrsi_uimm_zero_is_pure_read() {
+        // CSRRSI with uimm=0 sets no bits → pure read
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x12345678;
+
+        cpu.execute(Instruction::Csrrsi {
+            csr: 0x340,
+            uimm: 0,
+            rd: 5,
+        });
+
+        assert_eq!(
+            cpu.regs[5], 0x12345678,
+            "CSRRSI uimm=0 must read without modifying"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0x12345678,
+            "CSRRSI uimm=0 must not modify CSR"
+        );
+    }
+
+    // =========================================================================
+    // CSRRCI tests
+    // =========================================================================
+    // CSRRCI: rd = old CSR value, CSR = CSR & ~zero_extend(uimm5)
+    // Clears bits indicated by the 5-bit zero-extended immediate.
+    // =========================================================================
+
+    #[test]
+    fn test_csrrci_clears_bits() {
+        // Section 8 sequence:
+        // mscratch = 31 (0b11111) after CSRRSI
+        // CSRRCI with imm=15 (0b01111) clears bits 3:0
+        // result = 31 & ~15 = 0b11111 & 0b10000 = 16
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 31; // 0b11111
+
+        cpu.execute(Instruction::Csrrci {
+            csr: 0x340,
+            uimm: 15, // 0b01111 — clear bits 3:0
+            rd: 7,
+        });
+
+        assert_eq!(cpu.csrs.mscratch, 16, "CSRRCI: 31 & ~15 must equal 16");
+    }
+
+    #[test]
+    fn test_csrrci_returns_old_value() {
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 31;
+
+        cpu.execute(Instruction::Csrrci {
+            csr: 0x340,
+            uimm: 15,
+            rd: 7,
+        });
+
+        assert_eq!(
+            cpu.regs[7], 31,
+            "CSRRCI rd must hold OLD value (31), not new value (16)"
+        );
+    }
+
+    #[test]
+    fn test_csrrci_does_not_set_bits() {
+        // CSRRCI only clears bits, never sets.
+        // Bits that are 0 in uimm must be unchanged.
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0x00000000;
+
+        cpu.execute(Instruction::Csrrci {
+            csr: 0x340,
+            uimm: 31,
+            rd: 0,
+        });
+
+        assert_eq!(cpu.csrs.mscratch, 0, "CSRRCI on zero CSR must stay zero");
+    }
+
+    #[test]
+    fn test_csrrci_uimm_zero_is_pure_read() {
+        let mut cpu = Cpu::new();
+        cpu.csrs.mscratch = 0xABCD;
+
+        cpu.execute(Instruction::Csrrci {
+            csr: 0x340,
+            uimm: 0,
+            rd: 5,
+        });
+
+        assert_eq!(
+            cpu.regs[5], 0xABCD,
+            "CSRRCI uimm=0 must read without modifying"
+        );
+        assert_eq!(
+            cpu.csrs.mscratch, 0xABCD,
+            "CSRRCI uimm=0 must not modify CSR"
+        );
+    }
+
+    // =========================================================================
+    // Full section 8 sequence — mirrors the binary exactly
+    // Run this after individual tests pass to confirm the whole flow works.
+    // =========================================================================
+
+    #[test]
+    fn test_section8_full_sequence() {
+        let mut cpu = Cpu::new();
+
+        // --- csrw mscratch, t0  (t0 = 0xABCD1234) ---
+        // csrw = csrrw x0, csr, rs1
+        cpu.regs[5] = 0xABCD1234; // t0 = x5
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0,
+        });
+
+        // --- csrr t1, mscratch ---
+        // csrr = csrrs rd, csr, x0
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 6,
+        }); // t1 = x6
+        assert_eq!(cpu.regs[6], 0xABCD1234, "step 1: csrr read-back failed");
+
+        // --- csrw mscratch, t0  (t0 = 0x000000FF) ---
+        cpu.regs[5] = 0x000000FF;
+        cpu.execute(Instruction::Csrrw {
+            csr: 0x340,
+            rs1: 5,
+            rd: 0,
+        });
+
+        // --- csrrs t2, mscratch, t1  (t1 = 0xFFFFFF00) ---
+        // t2 must get OLD value; mscratch must become 0xFFFFFFFF
+        cpu.regs[6] = 0xFFFFFF00; // t1 = x6
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7,
+        }); // t2 = x7
+        assert_eq!(cpu.regs[7], 0x000000FF, "step 2: CSRRS old value wrong");
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 7,
+        }); // read back
+        assert_eq!(cpu.regs[7], 0xFFFFFFFF, "step 2: CSRRS new value wrong");
+
+        // --- csrrc t2, mscratch, t1  (t1 = 0x0F0F0F0F) ---
+        // t2 must get OLD value (0xFFFFFFFF); mscratch must become 0xF0F0F0F0
+        cpu.regs[6] = 0x0F0F0F0F; // t1
+        cpu.execute(Instruction::Csrrc {
+            csr: 0x340,
+            rs1: 6,
+            rd: 7,
+        }); // t2
+        assert_eq!(cpu.regs[7], 0xFFFFFFFF, "step 3: CSRRC old value wrong");
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 7,
+        }); // read back
+        assert_eq!(cpu.regs[7], 0xF0F0F0F0, "step 3: CSRRC new value wrong");
+
+        // --- csrrwi t2, mscratch, 0 ---
+        cpu.execute(Instruction::Csrrwi {
+            csr: 0x340,
+            uimm: 0,
+            rd: 7,
+        });
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 7,
+        }); // read back
+        assert_eq!(cpu.regs[7], 0, "step 4: CSRRWI imm=0 failed");
+
+        // --- csrrsi t2, mscratch, 31 ---
+        cpu.execute(Instruction::Csrrsi {
+            csr: 0x340,
+            uimm: 31,
+            rd: 7,
+        });
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 7,
+        }); // read back
+        assert_eq!(cpu.regs[7], 31, "step 5: CSRRSI imm=31 failed");
+
+        // --- csrrci t2, mscratch, 15 ---
+        // 31 & ~15 = 16
+        cpu.execute(Instruction::Csrrci {
+            csr: 0x340,
+            uimm: 15,
+            rd: 7,
+        });
+        cpu.execute(Instruction::Csrrs {
+            csr: 0x340,
+            rs1: 0,
+            rd: 7,
+        }); // read back
+        assert_eq!(
+            cpu.regs[7], 16,
+            "step 6: CSRRCI imm=15 failed (expected 31 & ~15 = 16)"
+        );
     }
 }
