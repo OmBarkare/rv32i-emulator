@@ -1,4 +1,5 @@
 mod cpu;
+mod csrs;
 mod decoder;
 mod executor;
 mod fetcher;
