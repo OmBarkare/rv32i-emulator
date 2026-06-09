@@ -300,6 +300,11 @@ impl Cpu {
             }
 
             Instruction::Mret => {
+                // restore MIE from MPIE
+                let mpie = self.csrs.read_mstatus_mpie();
+                self.csrs.write_mstatus_mie(mpie);
+                self.csrs.write_mstatus_mpie(true);
+                self.csrs.write_mstatus_mpp(3);
                 self.pc = self.csrs.mepc + 4;
             }
 
@@ -308,7 +313,7 @@ impl Cpu {
             }
 
             _ => {
-                println!("illegal")
+                self.trap(2, 0);
             }
         }
         self.regs[0] = 0; // fixing rs0 to 0
