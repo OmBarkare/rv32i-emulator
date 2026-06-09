@@ -57,10 +57,16 @@ impl Cpu {
 
     // TODO
     // save state to csr, update PC to mvec
-    pub fn trap(&mut self, cause: u32) {
+    pub fn trap(&mut self, cause: u32, tval: u32) {
         self.csrs.mcause = cause;
         self.csrs.mepc = self.curr_pc; // mepc saves address of trapping instruction
         self.pc = self.csrs.mtvec;
+        self.csrs.write_mstatus_mpv(false); // false is 0
+        self.csrs.write_mstatus_mpp(3);
+        let mie = self.csrs.read_mstatus_mie();
+        self.csrs.write_mstatus_mpie(mie);
+        self.csrs.write_mstatus_mie(false);
+        self.csrs.mtval = tval;
     }
 
     pub fn get_csr(&mut self, csr: u16) -> Result<&mut u32, ()> {
