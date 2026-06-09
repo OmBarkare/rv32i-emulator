@@ -1,29 +1,6 @@
+use crate::csrs::Csrs;
 use crate::memory::Memory;
-pub struct Csrs {
-    pub mtvec: u32,    // trap vector base address
-    pub mepc: u32,     // machine exception PC
-    pub mcause: u32,   // machine exception cause
-    pub mtval: u32,    // machine trap value
-    pub mstatus: u32,  // machine status register
-    pub mie: u32,      // machine interrupt enable
-    pub mip: u32,      // machine interrupt pending
-    pub mscratch: u32, // temparary stratch word
-}
 
-impl Csrs {
-    fn init() -> Self {
-        Csrs {
-            mtvec: 0,
-            mepc: 0,
-            mcause: 0,
-            mtval: 0,
-            mstatus: 0,
-            mie: 0,
-            mip: 0,
-            mscratch: 0,
-        }
-    }
-}
 pub struct Cpu {
     pub regs: [u32; 32],
     pub pc: u32, // stores address of instruction to be fetched, which will be executed next
