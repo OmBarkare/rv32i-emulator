@@ -292,11 +292,11 @@ impl Cpu {
             // called from different privilege modes.
             // 11 is when it returns from M-mode.
             Instruction::Ecall => {
-                self.trap(11);
+                self.trap(11, 0);
             }
 
             Instruction::Ebreak => {
-                self.trap(3);
+                self.trap(3, 0);
             }
 
             Instruction::Mret => {
