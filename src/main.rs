@@ -12,11 +12,11 @@ use std::{fs::File, io::Read};
 fn main() {
     let mut cpu = Cpu::new();
     let mut file =
-        File::open("/home/om/omomo/projects/rv32i-emulator/tests/rv32i_zicsr.bin").unwrap();
+        File::open("/home/om/omomo/projects/rv32i-emulator/dump/basic_exec_cssrs.elf").unwrap();
     let mut binary: Vec<u8> = Vec::new();
 
     file.read_to_end(&mut binary).unwrap();
-    cpu.load_binary(&binary);
+    cpu.load_elf(&binary).unwrap();
 
     loop {
         let raw_inst = cpu.fetch();
@@ -25,6 +25,12 @@ fn main() {
         if raw_inst.bits == 0x0000006F {
             println!("HALT ENCOUNTERED");
             cpu.dump_registers();
+            println!("PRINTING MEMORY:\n");
+            println!(
+                "mem[0x44]: 0X{:X}\nmem[0x40]: 0X{:X}",
+                cpu.mem.read_32(0x44).unwrap(),
+                cpu.mem.read_32(0x40).unwrap()
+            );
             break;
         }
 
