@@ -305,7 +305,7 @@ impl Cpu {
                 self.csrs.write_mstatus_mie(mpie);
                 self.csrs.write_mstatus_mpie(true);
                 self.csrs.write_mstatus_mpp(3);
-                self.pc = self.csrs.mepc + 4;
+                self.pc = self.csrs.mepc;
             }
 
             Instruction::Fence => {
