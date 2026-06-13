@@ -234,7 +234,7 @@ impl Cpu {
                 match imm12 {
                     0x000 => Instruction::Ecall,
                     0x001 => Instruction::Ebreak,
-                    0x0302 => Instruction::Mret,
+                    0x302 => Instruction::Mret,
                     _ => Instruction::Illegal,
                 }
             }
