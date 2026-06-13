@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Csrs {
     pub mtvec: u32,   // trap vector base address
     pub mepc: u32,    // machine exception PC
@@ -8,6 +9,8 @@ pub struct Csrs {
     pub mie: u32,      // machine interrupt enable
     pub mip: u32,      // machine interrupt pending
     pub mscratch: u32, // temparary stratch word
+    pub misa: u32,     // to convey the ISA capabilities of machine
+    pub mhartid: u32,  // 0 for single threaded
 }
 
 impl Csrs {
@@ -22,6 +25,26 @@ impl Csrs {
             mie: 0,
             mip: 0,
             mscratch: 0,
+            misa: (1 << 30) | 1 << 8,
+            mhartid: 0,
+        }
+    }
+
+    // TODO - figure out a way to make some csr like
+    // mhartid read only
+    pub fn get_csr(&mut self, csr: u16) -> Result<&mut u32, ()> {
+        match csr {
+            0x300 => Ok(&mut self.mstatus),
+            0x301 => Ok(&mut self.misa),
+            0x304 => Ok(&mut self.mie),
+            0x305 => Ok(&mut self.mtvec),
+            0x340 => Ok(&mut self.mscratch),
+            0x341 => Ok(&mut self.mepc),
+            0x342 => Ok(&mut self.mcause),
+            0x343 => Ok(&mut self.mtval),
+            0x344 => Ok(&mut self.mip),
+            0xF14 => Ok(&mut self.mhartid),
+            _ => Err(()),
         }
     }
 
