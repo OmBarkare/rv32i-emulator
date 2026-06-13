@@ -37,7 +37,7 @@ impl Cpu {
     pub fn trap(&mut self, cause: u32, tval: u32) {
         self.csrs.mcause = cause;
         self.csrs.mepc = self.curr_pc; // mepc saves address of trapping instruction
-        self.pc = self.csrs.mtvec;
+        self.pc = self.csrs.mtvec & !0x3;
         self.csrs.write_mstatus_mpv(false); // false is 0
         self.csrs.write_mstatus_mpp(3);
         let mie = self.csrs.read_mstatus_mie();
