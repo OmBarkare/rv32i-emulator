@@ -29,10 +29,10 @@ fn main() {
         }
 
         println!("inst_hex: 0X{:X}", &raw_inst.bits);
-        println!("PC(next inst): 0X{:X}", cpu.pc);
+        println!("PC: 0X{:X}", cpu.curr_pc);
         let inst = cpu.decode(raw_inst);
 
-        println!("{:#?}", inst);
+        println!("{:#?}\n\n", inst);
 
         cpu.execute(inst);
     }
