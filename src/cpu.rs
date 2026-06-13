@@ -45,18 +45,4 @@ impl Cpu {
         self.csrs.write_mstatus_mie(false);
         self.csrs.mtval = tval;
     }
-
-    pub fn get_csr(&mut self, csr: u16) -> Result<&mut u32, ()> {
-        match csr {
-            0x300 => Ok(&mut self.csrs.mstatus),
-            0x304 => Ok(&mut self.csrs.mie),
-            0x341 => Ok(&mut self.csrs.mepc),
-            0x342 => Ok(&mut self.csrs.mcause),
-            0x305 => Ok(&mut self.csrs.mtvec),
-            0x343 => Ok(&mut self.csrs.mtval),
-            0x340 => Ok(&mut self.csrs.mscratch),
-            0x344 => Ok(&mut self.csrs.mip),
-            _ => Err(()),
-        }
-    }
 }
