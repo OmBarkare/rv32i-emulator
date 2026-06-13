@@ -149,7 +149,7 @@ impl Cpu {
             // I-type CSR
             Instruction::Csrrw { csr, rs1, rd } => {
                 let new_csr_val = self.regs[rs1 as usize];
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 // reading only if rd is not r0 to avoid read side effects
                 let old_csr_val: Option<u32> = if rd != 0 { Some(*csr_reg) } else { None };
                 *csr_reg = new_csr_val;
@@ -159,7 +159,7 @@ impl Cpu {
             }
             Instruction::Csrrs { csr, rs1, rd } => {
                 let new_csr_val = self.regs[rs1 as usize];
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 let old_csr_val = *csr_reg;
                 if rs1 != 0 {
                     *csr_reg |= new_csr_val;
@@ -168,7 +168,7 @@ impl Cpu {
             }
             Instruction::Csrrc { csr, rs1, rd } => {
                 let new_csr_val = self.regs[rs1 as usize];
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 let old_csr_val = *csr_reg;
                 if rs1 != 0 {
                     *csr_reg &= !new_csr_val;
@@ -176,7 +176,7 @@ impl Cpu {
                 self.regs[rd as usize] = old_csr_val;
             }
             Instruction::Csrrwi { csr, uimm, rd } => {
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 // reading only if rd is not r0 to avoid read side effects
                 let old_csr_val: Option<u32> = if rd != 0 { Some(*csr_reg) } else { None };
                 *csr_reg = uimm as u32;
@@ -185,7 +185,7 @@ impl Cpu {
                 }
             }
             Instruction::Csrrsi { csr, uimm, rd } => {
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 let old_csr_val = *csr_reg;
                 if uimm != 0 {
                     *csr_reg |= uimm as u32;
@@ -193,7 +193,7 @@ impl Cpu {
                 self.regs[rd as usize] = old_csr_val;
             }
             Instruction::Csrrci { csr, uimm, rd } => {
-                let csr_reg = self.get_csr(csr).unwrap();
+                let csr_reg = self.csrs.get_csr(csr).unwrap();
                 let old_csr_val = *csr_reg;
                 if uimm != 0 {
                     *csr_reg &= !(uimm as u32);
@@ -312,8 +312,8 @@ impl Cpu {
                 println!("fence")
             }
 
-            _ => {
-                self.trap(2, 0);
+            Instruction::Illegal => {
+                self.trap(2, self.mem.read_32(self.curr_pc).unwrap());
             }
         }
         self.regs[0] = 0; // fixing rs0 to 0
