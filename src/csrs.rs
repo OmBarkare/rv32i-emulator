@@ -13,6 +13,14 @@ pub struct Csrs {
     pub mhartid: u32,  // 0 for single threaded
 }
 
+#[derive(Debug)]
+pub struct CsrAccessResult {
+    pub read_val: Option<u32>, // value read is put here
+    pub write_performed: bool, // true if write was performed
+    pub try_read: bool,        // true if tried to read when not allowed
+    pub try_write: bool,       // true if tried to write when not allowed
+}
+
 impl Csrs {
     pub fn init() -> Self {
         Csrs {
@@ -32,7 +40,7 @@ impl Csrs {
 
     // TODO - figure out a way to make some csr like
     // mhartid read only
-    pub fn get_csr(&mut self, csr: u16) -> Result<&mut u32, ()> {
+    fn get_csr(&mut self, csr: u16) -> Result<&mut u32, ()> {
         match csr {
             0x300 => Ok(&mut self.mstatus),
             0x301 => Ok(&mut self.misa),
@@ -46,6 +54,114 @@ impl Csrs {
             0xF14 => Ok(&mut self.mhartid),
             _ => Err(()),
         }
+    }
+
+    pub fn access_write(
+        &mut self,
+        csr: u16,
+        do_read: bool,
+        do_write: bool,
+        val: u32,
+    ) -> Result<CsrAccessResult, ()> {
+        let mut res = CsrAccessResult {
+            read_val: None,
+            write_performed: false,
+            try_read: false,
+            try_write: false,
+        };
+
+        let read_only = (csr >> 10) == 3;
+
+        // if csr is a valid csr address then proceed with operations
+        if let Ok(reg) = self.get_csr(csr) {
+            if do_read {
+                res.read_val = Some(*reg);
+            }
+
+            if do_write {
+                if read_only {
+                    res.try_write = true;
+                } else {
+                    *reg = val;
+                    res.write_performed = true;
+                }
+            }
+        } else {
+            return Err(());
+        }
+        Ok(res)
+    }
+
+    pub fn access_set(
+        &mut self,
+        csr: u16,
+        do_read: bool,
+        do_write: bool,
+        val: u32,
+    ) -> Result<CsrAccessResult, ()> {
+        let mut res = CsrAccessResult {
+            read_val: None,
+            write_performed: false,
+            try_read: false,
+            try_write: false,
+        };
+
+        let read_only = (csr >> 10) == 3;
+
+        // if csr is a valid csr address then proceed with operations
+        if let Ok(reg) = self.get_csr(csr) {
+            if do_read {
+                res.read_val = Some(*reg);
+            }
+
+            if do_write {
+                if read_only {
+                    res.try_write = true;
+                } else {
+                    *reg |= val;
+                    res.write_performed = true;
+                }
+            }
+        } else {
+            return Err(());
+        }
+        Ok(res)
+    }
+
+    pub fn access_clear(
+        &mut self,
+        csr: u16,
+        do_read: bool,
+        do_write: bool,
+        val: u32,
+    ) -> Result<CsrAccessResult, ()> {
+        let mut res = CsrAccessResult {
+            read_val: None,
+            write_performed: false,
+            try_read: false,
+            try_write: false,
+        };
+
+        let read_only = (csr >> 10) == 3;
+
+        // if csr is a valid csr address then proceed with operations
+        if let Ok(reg) = self.get_csr(csr) {
+            if do_read {
+                res.read_val = Some(*reg);
+            }
+
+            if do_write {
+                if read_only {
+                    res.try_write = true;
+                } else {
+                    *reg &= !val;
+                    res.write_performed = true;
+                }
+            }
+        } else {
+            return Err(());
+        }
+        Ok(res)
     }
 
     pub fn write_mstatus_mpv(&mut self, set: bool) {
