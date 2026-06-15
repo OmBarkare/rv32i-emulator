@@ -1,13 +1,22 @@
-# RV32I emulator
-implementation of the rv32i instruction set in rust
+# RV32I Emulator
+A RISCV emulator written in Rust, implementing RV32I and Zicsr extensions with full M-mode privilege support including trap handling (for exceptions)
 
-## Why I am making it
-because I want to learn how computers work at the lowest level of abstraction
+## Extensions currently implemented
+Extensions:-
+- I
+- Zicsr
 
-## What it does
-This RV32I emulator can execute flat binaries containing RV32I unprivileged instructions
+## Other capabilities
+- Currently, it is a full M mode implementation. It does not have other privilege modes.
+- It can load statically linked ELF files
+- Can trap for exceptions, no interrupts implemented yet
+- CSR enforce register level read only semantics. Per-bit WARL masking is not yet implemented
+- Ecall, Ebreak and Illegal instructions trap
 
-## How to run test binary
+NOTE
+> trap handler has to be setup by the user program themselves, and then change mtvec to point to that address.
+
+## How to run statically linked ELF
 clone using
 ```bash
 git clone https://github.com/OmBarkare/rv32i-emulator.git
@@ -18,13 +27,36 @@ go to the project directory and run
 cargo run
 ```
 
-## Immediate goals
-- make an elf loader to load a elf compiled for rv32i into memory, so that I can execute at least bare metal binary
+## Other interesting technical details
+### Sparsely allocated memory
+The whole 32 bit address space is usable, but is not immediately allocated. The memory has been split into 2^20 pages of 4KB size, and a page is only allocated when the process attempt to write to an address that falls inside that page.
+If you read from an unallocated memory (memory which was never written to), then the interface will return a `None`<br>
+This is how the memory looks:<br>
+```
+pub struct Memory {
+    pages: Vec<Option<Box<[u8; 4096]>>>,
+}
+```
+And this is how it is initialised:<br>
+```
+    pub fn new() -> Self {
+        Memory {
+            pages: vec![None; 1 << 20],
+        }
+    }
+```
 
-## Final goal
-- Implement the privilaged ISA
-- make implementation capable enough to run an operating system
-- implement ISA extensions
+### CSRs access interface
+More than the interface itself, what is interesting is the return value that you get on accessing a csr. The return value looks like this:<br>
+```
+pub struct CsrAccessResult {
+    pub read_val: Option<u32>, // value read is put here
+    pub write_performed: bool, // true if write was performed
+    pub try_read: bool,        // true if tried to read when not allowed
+    pub try_write: bool,       // true if tried to write when not allowed
+}
+```
+Such a return value allows to easily implement side-effects or read and write, and also makes policy violation visible and easily accessible.
 
-## What is already working
-- Can run flat binaries for unprivileged instructions
+## Why am I doing this?
+I want to understand how these wonderful machines work.<br>Why didnt you just read a book to learn it then?<br>It is more fun to learn this way, and you can tweak the machine and make it behave as you want. It is just fun to test what the books say, and make it my own.
