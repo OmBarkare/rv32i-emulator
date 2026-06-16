@@ -12,19 +12,27 @@ Extensions:-
 - Can trap for exceptions, no interrupts implemented yet
 - CSR enforce register level read only semantics. Per-bit WARL masking is not yet implemented
 - Ecall, Ebreak and Illegal instructions trap
+- Can run C programs, and can print strings
 
 NOTE
 > trap handler has to be setup by the user program themselves, and then change mtvec to point to that address.
 
-## How to run statically linked ELF
-clone using
-```bash
-git clone https://github.com/OmBarkare/rv32i-emulator.git
+## To compile C programs
+`init_seq.S` and `syscall.c` files are present in `tests/` directory
 ```
+riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 -nostdlib init_seq.S syscall.s <filename>
+```
+you can use the `-o` flag to specify output filename
 
+## To run the statically linked elf file
+- go to `src/main.rs` and update the file path to the path where your elf file is located
 go to the project directory and run
 ```bash
 cargo run
+```
+to also print all debug messages, which include register dump upon halt and each instruction executed,<br>
+```
+RUST_LOG=DEBUG cargo run
 ```
 
 ## Other interesting technical details
