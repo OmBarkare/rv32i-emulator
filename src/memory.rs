@@ -29,6 +29,12 @@ impl Memory {
     }
 
     pub fn write_8(&mut self, v_addr: u32, byte: u8) -> Result<(), ()> {
+        if v_addr == 0x80000000 {
+            print!("{}", byte as char);
+            use std::io::Write;
+            std::io::stdout().flush().unwrap();
+            return Ok(());
+        }
         let p_addr = v_addr >> 12;
         let p_offset = v_addr & 0xFFF;
 
