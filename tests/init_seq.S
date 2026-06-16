@@ -12,7 +12,8 @@ _halt:
 trap_handler:
   csrr t0, mcause
   li t1, 11;
-  beq t0, t1, sys_handler
+  beq t0, 11, sys_handler
+  j return_from_trap
 
 sys_handler:
   li t0, 64
