@@ -306,7 +306,7 @@ impl Cpu {
             }
 
             Instruction::Fence => {
-                println!("fence")
+                log::debug!("fence")
             }
 
             Instruction::Illegal => {

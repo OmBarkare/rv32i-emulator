@@ -102,7 +102,7 @@ impl Cpu {
 
     pub fn dump_registers(&self) {
         for i in 0..32 {
-            println!("x{:<2}: 0X{:0>8X}", i, self.regs[i]);
+            log::debug!("x{:<2}: 0X{:0>8X}", i, self.regs[i]);
         }
     }
 
@@ -118,5 +118,6 @@ impl Cpu {
         self.csrs.write_mstatus_mpie(mie);
         self.csrs.write_mstatus_mie(false);
         self.csrs.mtval = tval;
+        log::debug!("{:#?}", self.csrs);
     }
 }

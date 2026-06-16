@@ -7,9 +7,17 @@ mod instructions;
 mod memory;
 
 use cpu::Cpu;
+use env_logger;
+use log;
 use std::{fs::File, io::Read};
 
 fn main() {
+    env_logger::Builder::new()
+        .format_timestamp(None)
+        .format_target(false)
+        .parse_default_env()
+        .format_level(false)
+        .init();
     let mut cpu = Cpu::new();
     let mut file =
         File::open("/home/om/omomo/projects/rv32i-emulator/dump/basic_exec_cssrs.elf").unwrap();
