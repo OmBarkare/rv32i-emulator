@@ -22,7 +22,7 @@ impl Cpu {
         }
     }
 
-    pub fn load_binary(&mut self, binary: &[u8], start_addr: u32) {
+    pub fn load_segment(&mut self, binary: &[u8], start_addr: u32) {
         for (i, byte) in binary.iter().enumerate() {
             self.mem.write_8(i as u32 + start_addr, *byte).unwrap();
         }
@@ -91,11 +91,19 @@ impl Cpu {
                 | (elf[start_addr + 18] as u32) << 16
                 | (elf[start_addr + 17] as u32) << 8
                 | elf[start_addr + 16] as u32;
-            // all memory is already initialized to zero
-            // so no need to read memsize
+
+            let memsz = (elf[start_addr + 23] as u32) << 24
+                | (elf[start_addr + 22] as u32) << 16
+                | (elf[start_addr + 21] as u32) << 8
+                | elf[start_addr + 20] as u32;
 
             let bytes = &elf[(offset as usize)..((offset + filesz) as usize)];
-            self.load_binary(bytes, vaddr);
+            self.load_segment(bytes, vaddr);
+            for i in (offset + filesz)..memsz {
+                self.mem.write_8(i, 0).unwrap();
+            }
+
+            // allocating zero initialized memory for process
         }
         Ok(())
     }
